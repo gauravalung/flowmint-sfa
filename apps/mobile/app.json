@@ -13,7 +13,7 @@
       }
     },
     "extra": {
-      "apiBaseUrl": "http://192.168.1.43:4000/api/v1"
+      "apiBaseUrl": "https://flowmint-api.onrender.com/api/v1"
     }
   }
 }
