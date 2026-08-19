@@ -90,9 +90,14 @@ export const startVisitSchema = z.object({
   isOffBeat: z.boolean().optional().default(false),
 });
 
-export const closeVisitSchema = z.object({
-  outcome: z.enum(["ORDER_BOOKED", "NO_ORDER"]),
-  noOrderReason: z
-    .enum(["SHOP_CLOSED", "OWNER_ABSENT", "SUFFICIENT_STOCK", "CREDIT_ISSUE", "PRICE_ISSUE", "OTHER"])
-    .optional(),
-});
+export const closeVisitSchema = z
+  .object({
+    outcome: z.enum(["ORDER_BOOKED", "NO_ORDER"]),
+    noOrderReason: z
+      .enum(["SHOP_CLOSED", "OWNER_ABSENT", "SUFFICIENT_STOCK", "CREDIT_ISSUE", "PRICE_ISSUE", "OTHER"])
+      .optional(),
+  })
+  .refine((data) => data.outcome !== "NO_ORDER" || !!data.noOrderReason, {
+    message: "noOrderReason is required when outcome is NO_ORDER",
+    path: ["noOrderReason"],
+  });
