@@ -1,0 +1,16 @@
+{
+  "name": "flowmint",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "build:shared": "npm run build --workspace=packages/shared"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

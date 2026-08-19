@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Flowmint SFA",
+    "slug": "flowmint-sfa",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["android"],
+    "android": {
+      "package": "com.flowmint.sfa",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "extra": {
+      "apiBaseUrl": "http://192.168.1.43:4000/api/v1"
+    }
+  }
+}

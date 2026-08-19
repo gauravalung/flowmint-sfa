@@ -1,0 +1,29 @@
+# Render Blueprint — deploys apps/api as a free web service.
+# Database is external (Neon), not Render's own Postgres — Render's free
+# Postgres expires 30 days after creation; Neon's free tier doesn't.
+# See README.md "Deploying for real use" for the full walkthrough.
+#
+# Usage: push this repo to GitHub, then in Render: New + -> Blueprint ->
+# select the repo. Render finds this file automatically. You'll be prompted
+# to paste in DATABASE_URL (from Neon) — everything else is automatic.
+
+services:
+  - type: web
+    name: flowmint-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build:shared && npm --workspace=apps/api run build
+    startCommand: npm --workspace=apps/api run start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: RESET_TOKEN_SECRET
+        generateValue: true
+      - key: VERIFICATION_TOKEN_SECRET
+        generateValue: true
+      - key: OTP_PROVIDER
+        value: console
