@@ -2,10 +2,17 @@
   "expo": {
     "name": "Flowmint SFA",
     "slug": "flowmint-sfa",
+    "owner": "gauravalungs-team",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "platforms": ["android"],
+    "platforms": [
+      "android"
+    ],
+     "splash": {
+      "backgroundColor": "#ffffff",
+      "resizeMode": "contain"
+    },
     "android": {
       "package": "com.flowmint.sfa",
       "adaptiveIcon": {
@@ -13,7 +20,10 @@
       }
     },
     "extra": {
-      "apiBaseUrl": "https://flowmint-api.onrender.com/api/v1"
+      "apiBaseUrl": "https://flowmint-api.onrender.com/api/v1",
+      "eas": {
+        "projectId": "a3bb88db-b92a-4bb1-ba4a-a9f12d6e8492"
+      }
     }
   }
 }
