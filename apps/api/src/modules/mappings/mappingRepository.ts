@@ -240,3 +240,80 @@ export async function unmapEmployeeRetailer(id: string): Promise<boolean> {
   );
   return (rowCount ?? 0) > 0;
 }
+
+// ---------------------------------------------------------------------------
+// List-by-one-side lookups — what the admin UI needs to show "everything
+// currently mapped to X" before picking one row to remove.
+// ---------------------------------------------------------------------------
+
+export async function listBeatsForDistributionPartner(distributionPartnerId: string) {
+  const { rows } = await pool.query(
+    `SELECT dpbm.id AS mapping_id, dpbm.is_active, b.id, b.code, b.name
+     FROM distribution_partner_beat_mapping dpbm
+     JOIN beats b ON b.id = dpbm.beat_id
+     WHERE dpbm.distribution_partner_id = $1 AND dpbm.is_active = true
+     ORDER BY b.name ASC`,
+    [distributionPartnerId]
+  );
+  return rows;
+}
+
+export async function listRetailersForBeat(beatId: string) {
+  const { rows } = await pool.query(
+    `SELECT brm.id AS mapping_id, brm.is_active, brm.sequence_no, r.id, r.code, r.name
+     FROM beat_retailer_mapping brm
+     JOIN retailers r ON r.id = brm.retailer_id
+     WHERE brm.beat_id = $1 AND brm.is_active = true
+     ORDER BY brm.sequence_no ASC`,
+    [beatId]
+  );
+  return rows;
+}
+
+export async function listDistributionPartnersForRetailer(retailerId: string) {
+  const { rows } = await pool.query(
+    `SELECT rdpm.id AS mapping_id, rdpm.is_active, dp.id, dp.code, dp.name, dp.partner_type
+     FROM retailer_distribution_partner_mapping rdpm
+     JOIN distribution_partners dp ON dp.id = rdpm.distribution_partner_id
+     WHERE rdpm.retailer_id = $1 AND rdpm.is_active = true
+     ORDER BY dp.name ASC`,
+    [retailerId]
+  );
+  return rows;
+}
+
+export async function listDistributionPartnersForEmployee(employeeId: string) {
+  const { rows } = await pool.query(
+    `SELECT edpm.id AS mapping_id, edpm.is_active, dp.id, dp.code, dp.name, dp.partner_type
+     FROM employee_distribution_partner_mapping edpm
+     JOIN distribution_partners dp ON dp.id = edpm.distribution_partner_id
+     WHERE edpm.employee_id = $1 AND edpm.is_active = true
+     ORDER BY dp.name ASC`,
+    [employeeId]
+  );
+  return rows;
+}
+
+export async function listBeatsForEmployee(employeeId: string) {
+  const { rows } = await pool.query(
+    `SELECT ebm.id AS mapping_id, ebm.is_active, ebm.day_of_week, b.id, b.code, b.name
+     FROM employee_beat_mapping ebm
+     JOIN beats b ON b.id = ebm.beat_id
+     WHERE ebm.employee_id = $1 AND ebm.is_active = true
+     ORDER BY b.name ASC`,
+    [employeeId]
+  );
+  return rows;
+}
+
+export async function listRetailersForEmployee(employeeId: string) {
+  const { rows } = await pool.query(
+    `SELECT erm.id AS mapping_id, erm.is_active, r.id, r.code, r.name
+     FROM employee_retailer_mapping erm
+     JOIN retailers r ON r.id = erm.retailer_id
+     WHERE erm.employee_id = $1 AND erm.is_active = true
+     ORDER BY r.name ASC`,
+    [employeeId]
+  );
+  return rows;
+}

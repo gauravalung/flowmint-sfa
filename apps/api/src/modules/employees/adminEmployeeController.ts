@@ -1,8 +1,19 @@
 import crypto from "node:crypto";
 import { Response, NextFunction } from "express";
 import type { AuthenticatedRequest } from "../../middleware/requireAuth";
-import { createEmployeeSchema } from "@flowmint/shared";
+import { createEmployeeSchema, employeeRoleSchema } from "@flowmint/shared";
 import * as employeeService from "./employeeService";
+
+export async function listHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const isActive = req.query.isActive !== undefined ? req.query.isActive === "true" : undefined;
+    const role = req.query.role ? employeeRoleSchema.parse(req.query.role) : undefined;
+    const result = await employeeService.listEmployees({ isActive, role });
+    res.json({ employees: result });
+  } catch (err) {
+    next(err);
+  }
+}
 
 function generateTempPassword(): string {
   return crypto.randomBytes(9).toString("base64url");

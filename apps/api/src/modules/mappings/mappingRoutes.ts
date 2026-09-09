@@ -11,21 +11,27 @@ const router = Router();
 // mapping for the same entity.
 router.use(requireAuth, requireRole("ADMIN"));
 
+router.get("/distribution-partner-beat", controller.listBeatsForDistributionPartnerHandler as any);
 router.post("/distribution-partner-beat", controller.mapDistributionPartnerBeatHandler as any);
 router.delete("/distribution-partner-beat/:id", controller.unmapDistributionPartnerBeatHandler as any);
 
+router.get("/beat-retailer", controller.listRetailersForBeatHandler as any);
 router.post("/beat-retailer", controller.mapBeatRetailerHandler as any);
 router.delete("/beat-retailer/:id", controller.unmapBeatRetailerHandler as any);
 
+router.get("/retailer-distribution-partner", controller.listDistributionPartnersForRetailerHandler as any);
 router.post("/retailer-distribution-partner", controller.mapRetailerDistributionPartnerHandler as any);
 router.delete("/retailer-distribution-partner/:id", controller.unmapRetailerDistributionPartnerHandler as any);
 
+router.get("/employee-distribution-partner", controller.listDistributionPartnersForEmployeeHandler as any);
 router.post("/employee-distribution-partner", controller.mapEmployeeDistributionPartnerHandler as any);
 router.delete("/employee-distribution-partner/:id", controller.unmapEmployeeDistributionPartnerHandler as any);
 
+router.get("/employee-beat", controller.listBeatsForEmployeeHandler as any);
 router.post("/employee-beat", controller.mapEmployeeBeatHandler as any);
 router.delete("/employee-beat/:id", controller.unmapEmployeeBeatHandler as any);
 
+router.get("/employee-retailer", controller.listRetailersForEmployeeHandler as any);
 router.post("/employee-retailer", controller.mapEmployeeRetailerHandler as any);
 router.delete("/employee-retailer/:id", controller.unmapEmployeeRetailerHandler as any);
 

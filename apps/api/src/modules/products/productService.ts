@@ -3,7 +3,8 @@ import * as productRepo from "./productRepository";
 import * as catalogRefRepo from "./catalogRefRepository";
 import type { ProductSummary } from "@flowmint/shared";
 
-function toSummary(row: productRepo.DistributorProductRow): ProductSummary {
+function toSummary(row: productRepo.ProductWithNamesRow): ProductSummary {
+  const withInventory = row as productRepo.DistributorProductRow;
   return {
     id: row.id,
     skuCode: row.sku_code,
@@ -16,9 +17,19 @@ function toSummary(row: productRepo.DistributorProductRow): ProductSummary {
     mrp: row.mrp,
     price: row.price,
     gstRate: row.gst_rate,
-    availableQty: row.available_qty,
-    isFocusProduct: row.is_focus_product,
+    availableQty: withInventory.available_qty,
+    isFocusProduct: withInventory.is_focus_product,
   };
+}
+
+export async function listProducts(filter: {
+  search?: string;
+  categoryId?: string;
+  page: number;
+  pageSize: number;
+}): Promise<{ products: ProductSummary[]; total: number }> {
+  const { rows, total } = await productRepo.list(filter);
+  return { products: rows.map(toSummary), total };
 }
 
 export async function getDistributorCatalog(

@@ -25,6 +25,16 @@ export async function findCategoryByName(name: string): Promise<RefRow | null> {
   return rows[0] ?? null;
 }
 
+export async function listBrands(): Promise<RefRow[]> {
+  const { rows } = await pool.query<RefRow>(`SELECT id, name FROM brands WHERE is_active = true ORDER BY name ASC`);
+  return rows;
+}
+
+export async function listCategories(): Promise<RefRow[]> {
+  const { rows } = await pool.query<RefRow>(`SELECT id, name FROM categories WHERE is_active = true ORDER BY name ASC`);
+  return rows;
+}
+
 export async function findOrCreateCategoryByName(name: string): Promise<RefRow> {
   const existing = await findCategoryByName(name);
   if (existing) return existing;

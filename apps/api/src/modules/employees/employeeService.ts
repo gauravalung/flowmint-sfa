@@ -50,6 +50,11 @@ export async function provisionEmployee(params: {
   });
 }
 
+export async function listEmployees(filter: { isActive?: boolean; role?: EmployeeRole }) {
+  const rows = await employeeRepo.list(filter);
+  return rows.map(toPublicEmployee);
+}
+
 export function toPublicEmployee(row: employeeRepo.EmployeeRow) {
   return {
     id: row.id,

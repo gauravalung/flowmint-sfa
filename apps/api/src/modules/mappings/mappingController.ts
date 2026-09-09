@@ -9,6 +9,70 @@ import {
   employeeRetailerMappingSchema,
 } from "@flowmint/shared";
 import * as service from "./mappingService";
+import * as mappingRepo from "./mappingRepository";
+import { ApiError } from "../../lib/errors";
+
+function requireQueryParam(req: AuthenticatedRequest, name: string): string {
+  const value = req.query[name];
+  if (typeof value !== "string" || !value) {
+    throw new ApiError(400, "QUERY_PARAM_REQUIRED", `Query parameter '${name}' is required.`);
+  }
+  return value;
+}
+
+export async function listBeatsForDistributionPartnerHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const distributionPartnerId = requireQueryParam(req, "distributionPartnerId");
+    res.json({ mappings: await mappingRepo.listBeatsForDistributionPartner(distributionPartnerId) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listRetailersForBeatHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const beatId = requireQueryParam(req, "beatId");
+    res.json({ mappings: await mappingRepo.listRetailersForBeat(beatId) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listDistributionPartnersForRetailerHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const retailerId = requireQueryParam(req, "retailerId");
+    res.json({ mappings: await mappingRepo.listDistributionPartnersForRetailer(retailerId) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listDistributionPartnersForEmployeeHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const employeeId = requireQueryParam(req, "employeeId");
+    res.json({ mappings: await mappingRepo.listDistributionPartnersForEmployee(employeeId) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listBeatsForEmployeeHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const employeeId = requireQueryParam(req, "employeeId");
+    res.json({ mappings: await mappingRepo.listBeatsForEmployee(employeeId) });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listRetailersForEmployeeHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  try {
+    const employeeId = requireQueryParam(req, "employeeId");
+    res.json({ mappings: await mappingRepo.listRetailersForEmployee(employeeId) });
+  } catch (err) {
+    next(err);
+  }
+}
 
 export async function mapDistributionPartnerBeatHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {

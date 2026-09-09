@@ -62,6 +62,44 @@ export async function create(params: {
   return rows[0];
 }
 
+// Company-wide catalog list (admin) — not scoped to any one distributor's
+// inventory, unlike findInventoryForDistributor below.
+export async function list(filter: {
+  search?: string;
+  categoryId?: string;
+  page: number;
+  pageSize: number;
+}): Promise<{ rows: ProductWithNamesRow[]; total: number }> {
+  const conditions = [`p.is_active = true`];
+  const params: unknown[] = [];
+  if (filter.search) {
+    params.push(`%${filter.search.replace(/[%_]/g, (m) => `\\${m}`)}%`);
+    conditions.push(`(p.name ILIKE $${params.length} OR p.sku_code ILIKE $${params.length})`);
+  }
+  if (filter.categoryId) {
+    params.push(filter.categoryId);
+    conditions.push(`p.category_id = $${params.length}`);
+  }
+  const where = conditions.join(" AND ");
+  const offset = (filter.page - 1) * filter.pageSize;
+
+  const { rows } = await pool.query<ProductWithNamesRow>(
+    `SELECT p.*, b.name AS brand_name, c.name AS category_name
+     FROM products p
+     JOIN brands b ON b.id = p.brand_id
+     JOIN categories c ON c.id = p.category_id
+     WHERE ${where}
+     ORDER BY p.name ASC
+     LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, filter.pageSize, offset]
+  );
+  const { rows: countRows } = await pool.query<{ count: string }>(
+    `SELECT count(*) FROM products p WHERE ${where}`,
+    params
+  );
+  return { rows, total: Number(countRows[0].count) };
+}
+
 export interface DistributorProductRow extends ProductWithNamesRow {
   available_qty: number;
   is_focus_product: boolean;

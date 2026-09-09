@@ -33,14 +33,19 @@ built: the API for a capability lands before its screen.
   off-beat search, add outlet) updated to match the new API contract —
   outlet creation now collects a category and is scoped to the beat it
   was opened from, per spec §8.5.
+- **Admin Web Portal** (`apps/admin`) — added 2026-09-09, one screen per
+  admin capability above: distribution partners, retailers, retailer
+  subcategories, beats, all six mappings (tabbed, granular add/remove),
+  employees, products + per-distributor inventory, bulk upload, system
+  settings, status history. See "Admin Web Portal" below to run it.
 - **Shared** (`packages/shared`): types + zod validation schemas used by
-  both apps.
+  all three apps.
 
 ## Not in this slice (schema exists, API/UI does not yet)
 
-Admin Web Portal frontend · PJP submit/approve API · GPS day-start
-verification API · face recognition (data model + provider-adapter
-interface only, no vendor wired) · dashboard API · mobile screens for
+PJP submit/approve API · GPS day-start verification API · face
+recognition (data model + provider-adapter interface only, no vendor
+wired) · dashboard API (or a screen for it) · mobile screens for
 distributor→beat→retailer navigation, catalog/cart, and PJP/GPS. See
 `claude/Flowmint_Phase1_Scope_Locked.md` §13 for the full breakdown and
 what's planned for the next slice.
@@ -130,8 +135,9 @@ networks, campus/office Wi-Fi with client isolation — run
 slower but works across networks.
 
 Log in with the Sales Officer credentials the seed script printed (`SO001`)
-to see the field flow, or `ADM001` for admin endpoints (no admin UI yet —
-see below). To test forgot-password, request an OTP from the app — since
+to see the field flow. For admin capabilities, use the Admin Web Portal
+(below) rather than curl — it's a real UI now. To test forgot-password,
+request an OTP from the app — since
 no SMS provider is configured yet, the OTP is printed to the terminal
 where `npm run dev` (the API) is running, not actually sent as a text
 message. Look for a line like:
@@ -139,6 +145,33 @@ message. Look for a line like:
 ```
 [otp:console] would send OTP 123456 to 9876543210
 ```
+
+## Admin Web Portal
+
+```bash
+cd apps/admin
+npm install   # if you haven't already, from the repo root `npm install` covers this
+npm run dev
+```
+
+Open http://localhost:5173 and log in with `ADM001` / the seed password —
+the portal rejects any non-`ADMIN` role at login. It talks to the API at
+`http://localhost:4000/api/v1` by default; set `VITE_API_BASE_URL` (an
+`apps/admin/.env` file, or the environment) to point it elsewhere.
+
+Every screen in the sidebar maps to an admin capability in the spec:
+Distribution Partners (Super/Direct/Sub, with Sub Distributor codes
+auto-generated), Retailers, Retailer Subcategories, Beats, Mappings (all
+six relationship types, each removable one link at a time), Employees,
+Products & Inventory (the shared catalog plus each distributor's
+stock/focus overlay), Bulk Upload (per-type template + upload + row-level
+error report), Status History, and Settings.
+
+Note worth knowing if you ever touch `apps/admin`'s dependencies:
+`react`/`react-dom` are pinned to the exact version `apps/mobile` uses
+(18.2.0), not a newer one — see `claude/DECISIONS.md` 2026-09-09 for why
+(two React copies loaded at once otherwise, in an npm workspace with no
+`nohoist`).
 
 ## Admin: creating another employee login
 
@@ -165,6 +198,8 @@ login. Valid `role` values: `SALES_OFFICER`, `ISR`, `ASE`, `ASM`, `RSM`,
 
 ## Admin: bulk upload
 
+Easiest via the Admin Web Portal's Bulk Upload screen. Over curl:
+
 ```bash
 # Download a template
 curl -H "Authorization: Bearer <admin access token>" \
@@ -186,27 +221,36 @@ no partial/silent imports.
 
 Migration applies cleanly against a real Postgres database (28 tables);
 seed script runs end-to-end and prints working logins for all four seeded
-roles; `apps/api` and `apps/mobile` both type-check with no errors;
-`apps/mobile` bundles cleanly for Android (723 modules, no errors).
-Smoke-tested against the running API: login for every seeded role;
-today's-beat and distributor→beat→retailer navigation; admin creation of
-a Super/Sub Distributor (auto-generated `SUBnnnn` code) with duplicate-code
-rejection; the beat 40-outlet cap (41st mapping correctly rejected,
-`BEAT_CAPACITY_EXCEEDED`); order booking with the tentative scheme
-discount (10% slab at an ex-GST subtotal over ₹10,000); order delivery
-recalculating the *final* scheme discount from a reduced delivered
-quantity (correctly dropping to the 0% slab); OTP-gated field outlet
-creation end-to-end (request → verify → create, phone marked verified);
-bulk retailer upload (partial success with a row-level error reported for
-a missing required field, auto-generated `RETnnnnn` codes for blank-code
-rows). What has not been verified: the actual on-device mobile experience
-(no physical Android device in this sandbox) and the admin web portal,
-PJP/GPS/dashboard/face-recognition APIs, which are not built yet — see
-"Not in this slice" above.
+roles; `apps/api`, `apps/mobile`, and `apps/admin` all type-check/build
+with no errors; `apps/mobile` bundles cleanly for Android (723 modules,
+no errors). Smoke-tested against the running API: login for every seeded
+role; today's-beat and distributor→beat→retailer navigation; admin
+creation of a Super/Sub Distributor (auto-generated `SUBnnnn` code) with
+duplicate-code rejection; the beat 40-outlet cap (41st mapping correctly
+rejected, `BEAT_CAPACITY_EXCEEDED`); order booking with the tentative
+scheme discount (10% slab at an ex-GST subtotal over ₹10,000); order
+delivery recalculating the *final* scheme discount from a reduced
+delivered quantity (correctly dropping to the 0% slab); OTP-gated field
+outlet creation end-to-end (request → verify → create, phone marked
+verified); bulk retailer upload (partial success with a row-level error
+reported for a missing required field, auto-generated `RETnnnnn` codes
+for blank-code rows). The Admin Web Portal itself was Playwright-driven
+end-to-end against the real running API (not mocks): logged in as
+`ADM001`; created a Super Distributor, then a Sub Distributor under it
+(confirmed auto `SUBnnnn` code); created a retailer and a beat; mapped
+the retailer to the beat and removed that one mapping (confirming
+granular removal); uploaded a 2-row retailer CSV with one bad row and
+confirmed the 1-success/1-failure report; edited a system setting;
+created an employee (got a one-time temp password back); created a
+product and set its available qty/focus flag in a distributor's
+inventory. What has not been verified: the actual on-device mobile
+experience (no physical Android device in this sandbox) and
+PJP/GPS/dashboard/face-recognition, which are not built yet — see "Not in
+this slice" above.
 
 ## Next
 
-Pick up from `claude/Flowmint_Phase1_Scope_Locked.md` §13: the Admin Web
-Portal frontend, PJP submit/approve + GPS day-start APIs and screens,
-dashboard APIs, and face-recognition vendor integration — each its own
+Pick up from `claude/Flowmint_Phase1_Scope_Locked.md` §13: PJP
+submit/approve + GPS day-start APIs and screens, dashboard APIs (and a
+screen for them), and face-recognition vendor integration — each its own
 gated slice, same working style as every slice before this one.

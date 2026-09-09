@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import rateLimit from "express-rate-limit";
 import { requireAuth } from "../../middleware/requireAuth";
 import { requireRole } from "../../middleware/requireRole";
-import { createHandler } from "./adminEmployeeController";
+import { createHandler, listHandler } from "./adminEmployeeController";
 
 const router = Router();
 
@@ -22,6 +22,7 @@ const createLimiter = rateLimit({
   handler: rateLimitHandler,
 });
 
+router.get("/", requireAuth, requireRole("ADMIN"), listHandler as any);
 router.post("/", requireAuth, requireRole("ADMIN"), createLimiter, createHandler as any);
 
 export default router;

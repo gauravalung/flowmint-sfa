@@ -193,3 +193,39 @@ endpoints are explicitly deferred to later slices — see
 **What did NOT change:** persistence layer (`pg` + `node-pg-migrate`),
 layering (route→controller→service→repository), JWT/lockout/OTP-adapter
 security patterns, JSON error envelope.
+
+---
+
+## 2026-09-09 — Admin Web Portal frontend: React pinned to 18.2.0, matching the mobile app
+
+**Context:** Scaffolded `apps/admin` (Vite + React + TypeScript +
+react-router-dom) as the Phase 1 admin frontend. `npm create vite@latest`
+defaults to React 19, but `apps/mobile` requires React 18.2.0 (React
+Native 0.74.5's peer requirement). In one npm workspace tree without
+Yarn-style `nohoist`, that meant two real copies of React loaded at once —
+the hoisted 18.2.0 at the repo root (used by mobile) and a nested 19.2.8
+inside `apps/admin/node_modules` (needed because 19 conflicts with the
+hoisted 18). `react-router-dom`'s own `react-router` dependency got
+hoisted to the root and resolved *its* `react` import from the root's
+18.2.0 copy, while the app tree itself rendered via the nested 19.2.8
+`react`/`react-dom` pair — two different React module instances mounted
+in the same page, which is exactly what "Invalid hook call... you might
+have more than one copy of React" means. Confirmed directly: the admin
+app broke on every page past login with that exact React error until
+this was fixed.
+
+**Decision:** Pinned `apps/admin`'s `react`/`react-dom` to the exact same
+`18.2.0` as `apps/mobile` (not just "^18"), plus compatible
+`@vitejs/plugin-react`/`vite`/`@types/react*` versions. With both apps
+requiring the identical version, npm hoists one single shared copy to the
+root for everything (including `react-router`'s transitive `react`
+resolution) — no duplicate-copy possibility left. Verified:
+`apps/admin/node_modules` no longer contains its own `react`/`react-dom`
+at all; a Playwright smoke test exercising every admin screen renders and
+behaves correctly.
+
+**Why not the reverse (keep React 19, work around mobile)?** React Native
+0.74.5 hard-pins its React peer version; the admin app has no such
+constraint and any recent React 18 works fine for a CRUD portal. Matching
+down was the only direction that didn't require touching the mobile app's
+own dependency tree.

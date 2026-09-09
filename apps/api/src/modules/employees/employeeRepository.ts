@@ -95,6 +95,22 @@ export async function createEmployee(params: {
   return rows[0];
 }
 
+export async function list(filter: { isActive?: boolean; role?: EmployeeRole }): Promise<EmployeeRow[]> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (filter.isActive !== undefined) {
+    params.push(filter.isActive);
+    conditions.push(`is_active = $${params.length}`);
+  }
+  if (filter.role) {
+    params.push(filter.role);
+    conditions.push(`role = $${params.length}`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const { rows } = await pool.query<EmployeeRow>(`SELECT * FROM employees ${where} ORDER BY name ASC`, params);
+  return rows;
+}
+
 // The employee's downline via a recursive walk of reporting_manager_id
 // (spec §2.2/§10) — every employee, at any depth, who ultimately reports up
 // to this one. Used by dashboard queries in a later slice; exposed here now

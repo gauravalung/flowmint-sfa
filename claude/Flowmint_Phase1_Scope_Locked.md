@@ -365,10 +365,25 @@ vertical slices").
   retailer/visit/order flows) refactored onto the new schema so the app
   keeps building and running end-to-end, not just the admin side.
 
+**Slice 2 (Admin Web Portal frontend) — built 2026-09-09, same PR:**
+`apps/admin` (Vite + React + TypeScript + react-router-dom), a plain
+fetch-based API client mirroring the mobile app's `authedRequest` pattern
+(token refresh, 401 retry), and one screen per admin capability already
+built in Slice 1: distribution partners (create/list/status, Sub
+Distributor auto-code), retailers (create/list/search/status),
+retailer subcategories, beats, all six mapping types (tabbed UI, granular
+add/remove, the 40-cap surfaced as a real error), employees (create/list,
+reporting-manager picker), products + per-distributor inventory overlay,
+bulk upload (per-type template download, upload, row-level error
+report), system settings, and status-change history. No dashboard screen
+(the dashboard *API* is still not built — see below). Verified: `tsc -b`
++ `vite build` clean, and a Playwright smoke test driving every screen
+against the real running API (create Super/Sub Distributor, retailer,
+beat, a beat↔retailer mapping and its removal, a bulk retailer upload
+with a partial failure, a settings edit, an employee, a product, and its
+distributor-inventory row) — all passing against real data, not mocks.
+
 **Deferred to later slices (not started — schema exists, API/UI does not):**
-- Admin Web Portal frontend (no UI exists yet for any admin capability —
-  this slice is API-only, matching how the MVP built the API before the
-  screen in each vertical slice).
 - **PJP submit/approve/revise API endpoints** — `pjp_entries` table exists;
   no service/routes yet. Weekly-off-per-week enforcement, manager-approval
   routing, and the future-date-only revision rule all land with that API.
