@@ -41,6 +41,7 @@ export async function login(employeeCode: string, password: string) {
     sub: employee.id,
     employeeCode: employee.employee_code,
     role: employee.role,
+    companyId: employee.company_id,
   });
   const refreshToken = signRefreshToken({
     sub: employee.id,
@@ -73,6 +74,7 @@ export async function refresh(refreshToken: string) {
     sub: employee.id,
     employeeCode: employee.employee_code,
     role: employee.role,
+    companyId: employee.company_id,
   });
   const newRefreshToken = signRefreshToken({
     sub: employee.id,

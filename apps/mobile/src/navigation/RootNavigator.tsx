@@ -14,8 +14,10 @@ import AddOutletScreen from "../screens/AddOutletScreen";
 import AddOutletOtpScreen from "../screens/AddOutletOtpScreen";
 
 export type NewOutletDraft = {
+  beatId: string;
   name: string;
   ownerName?: string;
+  category: "RETAIL" | "WHOLESALE";
   addressLine?: string;
   city?: string;
   pincode?: string;
@@ -37,7 +39,10 @@ export type RootStackParamList = {
   };
   CloseVisit: { visitId: string; retailerName: string };
   OffBeatSearch: undefined;
-  AddOutlet: undefined;
+  // Outlet creation is scoped to today's beat (spec §8.5 — "Beat: pre-filled
+  // (read-only, from context)"), so the beat is passed in from wherever the
+  // flow was entered rather than picked in the form.
+  AddOutlet: { beatId: string };
   AddOutletOtp: { draft: NewOutletDraft };
 };
 

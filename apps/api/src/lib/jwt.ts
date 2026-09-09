@@ -5,6 +5,7 @@ export interface AccessTokenPayload {
   sub: string; // employee id
   employeeCode: string;
   role: string;
+  companyId: string;
   type: "access";
 }
 

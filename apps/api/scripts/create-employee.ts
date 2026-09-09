@@ -1,18 +1,21 @@
-// Admin employee-provisioning CLI script.
-// No HTTP endpoint exists for this on purpose — see DECISIONS.md
-// 2026-08-18 (round 4). Run from a machine with DATABASE_URL access.
+// Admin employee-provisioning CLI script. Kept alongside the new
+// POST /api/v1/admin/employees HTTP endpoint (see DECISIONS.md
+// 2026-09-09) — both call employeeService.provisionEmployee, so this is
+// just an alternate entry point (useful for scripted/offline provisioning,
+// e.g. seeding a batch of employees from a shell script) rather than the
+// only way in, as it was in the MVP.
 //
 // Usage:
-//   npm run create-employee -- --code=SM002 --name="Suresh Patel" --phone=9876500002 [--company=FLOWMINT-CO] [--distributor=FLOWMINT-DIST]
-//
-// Prints a generated temporary password once — it is not stored anywhere
-// in plaintext and cannot be retrieved again. The employee should use
-// forgot-password on first login if you don't hand it to them directly.
+//   npm run create-employee -- --code=ASM001 --name="Suresh Patel" --phone=9876500002 --role=ASM [--manager=SM001] [--company=FLOWMINT-CO]
 
 import "dotenv/config";
 import crypto from "node:crypto";
 import { pool } from "../src/db/pool";
 import { provisionEmployee } from "../src/modules/employees/employeeService";
+import * as employeeRepo from "../src/modules/employees/employeeRepository";
+import type { EmployeeRole } from "@flowmint/shared";
+
+const VALID_ROLES: EmployeeRole[] = ["SALES_OFFICER", "ISR", "ASE", "ASM", "RSM", "COUNTRY_HEAD", "ADMIN"];
 
 function parseArgs(argv: string[]): Record<string, string> {
   const out: Record<string, string> = {};
@@ -24,9 +27,6 @@ function parseArgs(argv: string[]): Record<string, string> {
 }
 
 function generateTempPassword(): string {
-  // 12 random bytes -> base64url, trimmed to a typeable length. Not meant
-  // to be memorized long-term — the employee should change it via
-  // forgot-password shortly after first login.
   return crypto.randomBytes(9).toString("base64url");
 }
 
@@ -36,16 +36,24 @@ async function main() {
   const employeeCode = args.code;
   const name = args.name;
   const phone = args.phone;
+  const role = (args.role ?? "SALES_OFFICER") as EmployeeRole;
+  const managerCode = args.manager;
   const companyCode = args.company ?? "FLOWMINT-CO";
-  const distributorCode = args.distributor ?? "FLOWMINT-DIST";
 
   if (!employeeCode || !name || !phone) {
-    console.error("Usage: npm run create-employee -- --code=SM002 --name=\"Suresh Patel\" --phone=9876500002");
+    console.error(
+      'Usage: npm run create-employee -- --code=ASM001 --name="Suresh Patel" --phone=9876500002 --role=ASM [--manager=SM001]'
+    );
     process.exit(1);
   }
 
   if (!/^[6-9]\d{9}$/.test(phone)) {
     console.error("Phone must be a 10-digit Indian mobile number (e.g. 9876500002).");
+    process.exit(1);
+  }
+
+  if (!VALID_ROLES.includes(role)) {
+    console.error(`Role must be one of: ${VALID_ROLES.join(", ")}`);
     process.exit(1);
   }
 
@@ -56,17 +64,25 @@ async function main() {
   }
   const companyId = companyRows[0].id;
 
-  const { rows: distributorRows } = await pool.query(`SELECT id FROM distributors WHERE code = $1`, [distributorCode]);
-  const distributorId = distributorRows[0]?.id ?? null;
+  let reportingManagerId: string | undefined;
+  if (managerCode) {
+    const manager = await employeeRepo.findByEmployeeCode(managerCode);
+    if (!manager) {
+      console.error(`Manager with employee_code ${managerCode} not found.`);
+      process.exit(1);
+    }
+    reportingManagerId = manager.id;
+  }
 
   const temporaryPassword = generateTempPassword();
 
   const employee = await provisionEmployee({
     companyId,
-    distributorId,
     employeeCode,
     name,
     phone,
+    role,
+    reportingManagerId,
     temporaryPassword,
   });
 
@@ -74,6 +90,7 @@ async function main() {
   console.log(`  employee_code: ${employee.employee_code}`);
   console.log(`  name:          ${employee.name}`);
   console.log(`  phone:         ${employee.phone}`);
+  console.log(`  role:          ${employee.role}`);
   console.log(`  temp password: ${temporaryPassword}`);
   console.log("");
   console.log("This password is shown once and is not recoverable. Hand it to the");
