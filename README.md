@@ -127,11 +127,14 @@ real device:
   backing, so `src/storage/secureStore.ts` falls back to `localStorage` on
   web only (`Platform.OS === "web"`). Never used on-device — the Android
   build still uses real secure storage.
-- **API URL**: the browser runs on your own machine, so `localhost` in
-  `expo.extra.apiBaseUrl` (`apps/mobile/app.json`) reaches your locally
-  running API directly — no LAN-IP edit needed like the phone setup above.
-  If you changed it to a LAN IP for phone testing, either flip it back or
-  it'll still work as long as that IP is reachable from your machine too.
+- **API URL**: `expo.extra.apiBaseUrl` (`apps/mobile/app.json`) defaults to
+  the deployed production API (`flowmint-api.onrender.com`), so the browser
+  preview talks to real production data out of the box, same as a phone
+  would with no config changes. To point it at your own local API instead,
+  set it to `http://localhost:4000/api/v1` — since the browser runs on the
+  same machine as the API here, plain `localhost` works, unlike the LAN-IP
+  dance the phone setup above needs. (Running in a Codespace instead? See
+  below — `localhost` doesn't mean the same thing there.)
 - **Layout/feel**: touch gestures, safe-area insets, and native navigation
   transitions won't exactly match a real Android device — good enough to
   iterate on logic and screen flow, not a substitute for a final check on
@@ -142,6 +145,46 @@ You still only need to rebuild/reinstall the debug APK when something
 *native* changes (a new native dependency, `app.json` permissions/plugins,
 an Expo SDK bump) — ordinary screen and logic changes hot-reload in either
 the browser or an already-installed APK without a rebuild.
+
+## Running the whole stack in a GitHub Codespace
+
+You don't need your own machine at all — `.devcontainer/devcontainer.json`
+sets up a ready-to-go environment from GitHub's web UI: **Code → Codespaces
+→ Create codespace on main**. First boot takes a few minutes and runs
+`npm install`, `npm run build:shared`, copies `apps/api/.env.example` →
+`.env`, and starts Postgres in the background automatically (mirrors Setup
+steps 1–4 above). Then, in the Codespace's terminal:
+
+```bash
+# One-time: migrate + seed (same as Setup steps 5-6)
+cd apps/api && npm run migrate:up && npm run seed
+# Keep the printed employee_code/password — you'll need them to log in.
+
+# Start the API (leave running in its own terminal tab)
+npm run dev
+
+# In another terminal tab: start the mobile browser preview
+cd apps/mobile && npm run web
+```
+
+Codespaces forwards ports 4000 (API) and 8081 (mobile) automatically —
+open the **Ports** tab, and the 8081 URL is your app, reachable from any
+browser, including your phone's, with nothing installed. One extra step
+the first time: right-click port **4000** in that same Ports tab → **Port
+Visibility → Public**. It needs to be reachable without a GitHub-auth
+redirect getting in the way of the app's own API calls (the forwarded
+URLs are still unguessable, but this does mean anyone with that exact URL
+during the Codespace's life could hit the API — fine for throwaway dev
+data with the placeholder secrets from `.env.example`, not something to
+do with anything real). `apps/mobile/app.config.js` detects the Codespaces
+environment automatically and points `apiBaseUrl` at the forwarded API
+port instead of `localhost` or production — no manual edit needed.
+
+Note: this gets you the full stack (API + Postgres + browser preview) for
+fast iteration and even a phone-browser check with zero local setup — it
+does **not** build a real Android APK (no Android SDK in this devcontainer
+by design, to keep first-boot fast). For that, still use
+`.github/workflows/build-mobile-apk.yml` or the debug APK it produces.
 
 ## Admin: creating another salesman login
 
