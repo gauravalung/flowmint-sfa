@@ -1,18 +1,22 @@
 {
   "name": "Flowmint SFA",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bullseye",
-  "features": {
-    // Codespaces' base node image has no Docker daemon by itself — this
-    // gets `docker compose up -d postgres` (used below) actually working.
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
-  },
 
-  // Mirrors README.md "Setup" steps 1-4. Steps 5-7 (migrate/seed/dev) are
-  // left as manual next steps — `npm run seed` prints login credentials
-  // you need to see and copy, and re-running it on every container rebuild
-  // would just create duplicate test data.
+  // App and Postgres as sibling containers via Docker Compose, orchestrated
+  // directly by Codespaces — no Docker daemon nested inside the devcontainer
+  // itself. (An earlier version used the docker-in-docker feature for this;
+  // it failed to build in Codespaces with no error surfaced in the creation
+  // log, so this is the more standard, better-supported pattern instead.)
+  "dockerComposeFile": ["docker-compose.yml"],
+  "service": "app",
+  "workspaceFolder": "/workspaces/flowmint-sfa",
+  "shutdownAction": "stopCompose",
+
+  // Mirrors README.md "Setup" steps 1-4 (step 1, starting Postgres, is
+  // handled by Compose itself). Steps 5-7 (migrate/seed/dev) are left as
+  // manual next steps — `npm run seed` prints login credentials you need
+  // to see and copy, and re-running it on every container rebuild would
+  // just create duplicate test data.
   "postCreateCommand": "npm install && npm run build:shared && ([ -f apps/api/.env ] || cp apps/api/.env.example apps/api/.env)",
-  "postStartCommand": "docker compose up -d postgres",
 
   "forwardPorts": [4000, 8081],
   "portsAttributes": {

@@ -1,0 +1,27 @@
+services:
+  app:
+    image: mcr.microsoft.com/devcontainers/javascript-node:20-bullseye
+    volumes:
+      - ../..:/workspaces:cached
+    command: sleep infinity
+    # Shares postgres's network namespace so "localhost:5432" — what
+    # apps/api/.env.example's DATABASE_URL already says — reaches it with
+    # no edits needed, instead of app.json/.env needing the compose
+    # service hostname ("postgres") instead of localhost.
+    network_mode: service:postgres
+
+  # Same image/credentials as the root docker-compose.yml (used for local,
+  # non-Codespaces dev) — duplicated here rather than shared via `extends`
+  # so this file stands alone for the devcontainer tooling to merge.
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: flowmint
+    volumes:
+      - flowmint_pg_data:/var/lib/postgresql/data
+
+volumes:
+  flowmint_pg_data:
