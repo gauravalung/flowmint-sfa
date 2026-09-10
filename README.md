@@ -106,6 +106,43 @@ API) is running, not actually sent as a text message. Look for a line like:
 [otp:console] would send OTP 123456 to 9876543210
 ```
 
+## Faster iteration: browser preview instead of an APK
+
+For everyday development you don't need a phone or an APK at all — the app
+also runs in a regular browser tab via Expo's web support
+(`react-dom` / `react-native-web`), with Fast Refresh on every save:
+
+```bash
+cd apps/mobile
+npm run web
+# opens http://localhost:8081 in your browser
+```
+
+This is a **dev-only convenience**, not a target platform — `app.json`'s
+`platforms` list still exists only for that build config, not as a claim
+the app ships on web. A few things behave differently there than on the
+real device:
+
+- **Auth tokens**: `expo-secure-store` (Keychain/Keystore) has no web
+  backing, so `src/storage/secureStore.ts` falls back to `localStorage` on
+  web only (`Platform.OS === "web"`). Never used on-device — the Android
+  build still uses real secure storage.
+- **API URL**: the browser runs on your own machine, so `localhost` in
+  `expo.extra.apiBaseUrl` (`apps/mobile/app.json`) reaches your locally
+  running API directly — no LAN-IP edit needed like the phone setup above.
+  If you changed it to a LAN IP for phone testing, either flip it back or
+  it'll still work as long as that IP is reachable from your machine too.
+- **Layout/feel**: touch gestures, safe-area insets, and native navigation
+  transitions won't exactly match a real Android device — good enough to
+  iterate on logic and screen flow, not a substitute for a final check on
+  a physical device (or the debug APK from
+  `.github/workflows/build-mobile-apk.yml`) before calling something done.
+
+You still only need to rebuild/reinstall the debug APK when something
+*native* changes (a new native dependency, `app.json` permissions/plugins,
+an Expo SDK bump) — ordinary screen and logic changes hot-reload in either
+the browser or an already-installed APK without a rebuild.
+
 ## Admin: creating another salesman login
 
 There's no admin web portal in this MVP and deliberately no HTTP endpoint
