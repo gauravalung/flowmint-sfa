@@ -54,7 +54,16 @@ export default function RetailerDetailScreen({ route, navigation }: Props) {
         beatId: beatId ?? undefined,
         isOffBeat: !beatId,
       });
-      navigation.replace("CloseVisit", { visitId: visit.id, retailerName: retailer?.name ?? "" });
+      // Replaces this same screen with the IN_PROGRESS branch below (Take
+      // Order / Close Visit) rather than jumping straight to CloseVisit —
+      // that used to be the only option before ordering existed.
+      navigation.replace("RetailerDetail", {
+        retailerId,
+        retailerName: retailer?.name ?? "",
+        beatId,
+        visitId: visit.id,
+        visitStatus: "IN_PROGRESS",
+      });
     } catch (err) {
       setErrorMessage(err instanceof ApiRequestError ? err.message : "Could not reach the server.");
     } finally {
@@ -99,12 +108,22 @@ export default function RetailerDetailScreen({ route, navigation }: Props) {
       <View style={styles.spacer} />
 
       {visitStatus === "IN_PROGRESS" && visitId ? (
-        <Pressable
-          style={styles.button}
-          onPress={() => navigation.navigate("CloseVisit", { visitId, retailerName: retailer.name })}
-        >
-          <Text style={styles.buttonText}>Close Visit</Text>
-        </Pressable>
+        <>
+          <Pressable
+            style={styles.button}
+            onPress={() =>
+              navigation.navigate("ProductCatalog", { retailerId, retailerName: retailer.name, visitId })
+            }
+          >
+            <Text style={styles.buttonText}>Take Order</Text>
+          </Pressable>
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate("CloseVisit", { visitId, retailerName: retailer.name })}
+          >
+            <Text style={styles.secondaryButtonText}>Close Visit — No Order</Text>
+          </Pressable>
+        </>
       ) : visitStatus === "ORDER_BOOKED" || visitStatus === "NO_ORDER" ? (
         <View style={styles.doneBanner}>
           <Text style={styles.doneBannerText}>Already visited today.</Text>
@@ -128,6 +147,15 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
   button: { backgroundColor: "#1a7f37", borderRadius: 8, paddingVertical: 14, alignItems: "center" },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: "#1a56db",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  secondaryButtonText: { color: "#1a56db", fontWeight: "600", fontSize: 14 },
   doneBanner: { backgroundColor: "#f1f1f1", borderRadius: 8, paddingVertical: 14, alignItems: "center" },
   doneBannerText: { color: "#555", fontSize: 14, fontWeight: "600" },
 });

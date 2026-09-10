@@ -4,6 +4,8 @@ import authRoutes from "./modules/auth/authRoutes";
 import beatRoutes from "./modules/beats/beatRoutes";
 import retailerRoutes from "./modules/retailers/retailerRoutes";
 import visitRoutes from "./modules/visits/visitRoutes";
+import productRoutes from "./modules/products/productRoutes";
+import orderRoutes from "./modules/orders/orderRoutes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 export function createApp() {
@@ -18,6 +20,8 @@ export function createApp() {
   app.use("/api/v1/me", beatRoutes);
   app.use("/api/v1/retailers", retailerRoutes);
   app.use("/api/v1/visits", visitRoutes);
+  app.use("/api/v1/products", productRoutes);
+  app.use("/api/v1/orders", orderRoutes);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

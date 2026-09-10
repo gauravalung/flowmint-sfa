@@ -46,9 +46,7 @@ export default function CloseVisitScreen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{retailerName}</Text>
-      <Text style={styles.subtitle}>
-        Ordering isn't available yet in this build — record why no order was taken.
-      </Text>
+      <Text style={styles.subtitle}>Record why no order was taken at this visit.</Text>
 
       {REASONS.map((r) => (
         <Pressable

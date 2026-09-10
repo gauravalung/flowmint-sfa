@@ -116,7 +116,7 @@ Index on (`category_id`), index on `name` (search), trigram index on `sku_code` 
 
 ---
 
-## 6. Scheme Discount + GST Calculation (server-authoritative, CONFIRMED — not yet wired to an order endpoint; that's Slice C)
+## 6. Scheme Discount + GST Calculation (server-authoritative, CONFIRMED — wired to `POST /orders`, 2026-09-10)
 
 Implemented as a plain calculation function in `packages/shared/src/scheme.ts` — **not** a `schemes` table structure. This is deliberate: one hardcoded rule doesn't earn a generic engine. If a second or third scheme rule shows up, that's the trigger to build the real thing.
 
@@ -213,9 +213,9 @@ Monorepo/npm workspaces, `apps/api` (Express+TS), `apps/mobile` (React Native/Ex
 
 | Slice | Contents | Status |
 |---|---|---|
-| **A** | Monorepo scaffold, schema + migration, seed script, admin employee-provisioning CLI script, login, forgot-password (OTP), login + forgot-password screens, type-checked + Android-bundled | **Complete, verified end-to-end. Awaiting your review before B.** |
-| **B** | Today's beat, retailer detail, check-in, no-order close, off-beat search, new outlet creation (OTP) | Not started |
-| **C** | Catalog (search + filter + virtualized list), cart, scheme discount + GST calculation, order submit, offline outbox, idempotency | Not started |
+| **A** | Monorepo scaffold, schema + migration, seed script, admin employee-provisioning CLI script, login, forgot-password (OTP), login + forgot-password screens, type-checked + Android-bundled | **Complete, verified end-to-end.** |
+| **B** | Today's beat, retailer detail, check-in, no-order close, off-beat search, new outlet creation (OTP) | **Complete.** |
+| **C** | Catalog (search + filter + virtualized list), cart, scheme discount + GST calculation, order submit, idempotency | **Online-ordering portion complete, verified end-to-end (2026-09-10) — see DECISIONS.md.** Offline outbox deliberately deferred, not yet started. |
 | **D** | Order history, same-day cancel, full salesman-day UAT walkthrough | Not started |
 
 **Provisioning note:** the CLI script shares the same service-layer `provisionEmployee()` function that would back an HTTP endpoint if one is ever added — the interface split is at the service boundary, not duplicated logic.

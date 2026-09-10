@@ -12,6 +12,8 @@ import CloseVisitScreen from "../screens/CloseVisitScreen";
 import OffBeatSearchScreen from "../screens/OffBeatSearchScreen";
 import AddOutletScreen from "../screens/AddOutletScreen";
 import AddOutletOtpScreen from "../screens/AddOutletOtpScreen";
+import ProductCatalogScreen from "../screens/ProductCatalogScreen";
+import CartScreen from "../screens/CartScreen";
 
 export type NewOutletDraft = {
   name: string;
@@ -39,6 +41,8 @@ export type RootStackParamList = {
   OffBeatSearch: undefined;
   AddOutlet: undefined;
   AddOutletOtp: { draft: NewOutletDraft };
+  ProductCatalog: { retailerId: string; retailerName: string; visitId: string };
+  Cart: { retailerId: string; retailerName: string; visitId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -71,6 +75,12 @@ export default function RootNavigator() {
               component={AddOutletOtpScreen}
               options={{ title: "Verify Shop Phone" }}
             />
+            <Stack.Screen
+              name="ProductCatalog"
+              component={ProductCatalogScreen}
+              options={{ title: "New Order" }}
+            />
+            <Stack.Screen name="Cart" component={CartScreen} options={{ title: "Cart" }} />
           </>
         ) : (
           <>
