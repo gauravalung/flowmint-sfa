@@ -197,7 +197,9 @@ Outlet creation and password reset **require live connectivity**. Beat viewing, 
 
 ## 10. Explicitly Not Building
 
-Multi-company logic · sub-distributors · a real scheme engine (tables) · price lists · inventory · returns · collections/payments · SAP/Tally/Marg/Busy · order approval workflow · full RBAC matrix · dedicated audit-log table · admin web portal · DMS · dashboards · GPS capture · repeat-last-order prefill · Play Store distribution/multi-device account management.
+Multi-company logic · a real scheme engine (tables) · price lists · inventory · returns · collections/payments · SAP/Tally/Marg/Busy · order approval workflow · full RBAC matrix · dedicated audit-log table · admin web portal · DMS · dashboards · GPS capture · repeat-last-order prefill · Play Store distribution/multi-device account management.
+
+**Reopened 2026-09-10:** "sub-distributors" (originally here as one line) turned out to mean something real and specific once asked about — one salesman working across multiple distributors, not a distributor-of-a-distributor hierarchy. Built; see §15 and `claude/DECISIONS.md`. Multi-*company* logic is unaffected and remains out of scope.
 
 ---
 
@@ -235,3 +237,23 @@ Monorepo/npm workspaces, `apps/api` (Express+TS), `apps/mobile` (React Native/Ex
 1. Real Android version floor on the pilot salesman's actual phone.
 2. Target pilot date.
 3. Whether the pilot salesman needs a tax-inclusive number verbally called out — answered structurally by §6 — but confirm this matches how he actually negotiates at the counter.
+
+---
+
+## 15. Multi-distributor salesmen (added 2026-09-10)
+
+**Confirmed by user (AskUserQuestion):** a single salesman can work across multiple distributors, switching between them — not a read-only admin browse view, and not a distributor hierarchy (sub-distributors). Reopens the "sub-distributors" line from §10.
+
+**Schema:** new `employee_distributor_mapping` (employee_id, distributor_id, many-to-many). `employees.distributor_id` (the original single FK) is left in place as an unused legacy "home" pointer — nothing scopes by it anymore — rather than dropped, to avoid touching `employeeRepository`/`createEmployee`/`authService` for no behavioral benefit. `beats` and `retailers` already carried `distributor_id` from the original schema, so no change was needed there.
+
+**Access model:** every distributor-scoped endpoint (retailers, visits, orders, beats) now takes an explicit `distributorId` from the client and validates it against `employee_distributor_mapping` before doing anything — there's no implicit "the employee's distributor" anymore. `GET /retailers/:id` is the one exception: it checks the *retailer's own* `distributor_id` against the mapping after the lookup, rather than requiring the caller to already know which distributor a given retailer belongs to.
+
+**Beat browsing vs. "today's beat" — a real distinction, not an oversight:** `beat_employee_mapping` has `UNIQUE(employee_id, day_of_week)` — at most one beat per employee per weekday, system-wide, regardless of distributor count. "Today's beat" (`GET /me/beat/today`) is unchanged by this feature: still resolves to that one beat, whichever distributor it happens to belong to (now included in the response as `distributorId`, since the client can no longer assume it). The new "browse all beats under a distributor" list (`GET /me/distributors/:id/beats`) is deliberately *not* filtered to only beats this employee has a day-of-week mapping for — it shows every active beat under a distributor the employee has access to, same precedent as off-beat retailer search already showing the whole distributor's retailer book rather than just beat-assigned retailers.
+
+**New API surface:** `GET /distributors` (list this employee's distributors) · `GET /me/distributors/:id/beats` · `GET /beats/:id/retailers`.
+
+**Mobile:** a `DistributorContext` (in-memory, cleared on logout) gates the app after login — skipped silently for the common single-distributor case, shown as a picker only when there's a real choice. A "Switch" link from Today's Beat re-opens it as a normal pushed screen. New browse screens: Distributor List → Beat List → Beat's Retailer List → existing Retailer Detail.
+
+**Verified, not just written:** full flow via curl against a real local Postgres — `GET /distributors` returns both seeded distributors; beats/retailers list correctly per distributor; started a visit and placed an order against the *second* distributor's retailer end-to-end; confirmed the security-critical case — claiming the wrong `distributorId` for a real retailer (retailer actually under distributor 2, order claims distributor 1) correctly 404s as `RETAILER_NOT_FOUND` rather than silently succeeding or leaking which distributor the retailer really belongs to. Both `apps/api` and `apps/mobile` type-check cleanly; mobile bundles successfully for web.
+
+**Seed data:** now creates a second distributor (`FLOWMINT-DIST-2`) with its own beat and 4 retailers, mapped to the same seeded salesman via `employee_distributor_mapping` but deliberately *not* given a `beat_employee_mapping` row (no free weekday slots — Beat A already occupies all 7) — so it's reachable only through the new browse screens, which is exactly the scenario this feature needed to be testable at all.

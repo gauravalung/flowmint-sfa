@@ -11,7 +11,7 @@ import { generateUuid } from "../lib/uuid";
 type Props = NativeStackScreenProps<RootStackParamList, "RetailerDetail">;
 
 export default function RetailerDetailScreen({ route, navigation }: Props) {
-  const { retailerId, beatId, visitId, visitStatus } = route.params;
+  const { retailerId, distributorId, beatId, visitId, visitStatus } = route.params;
   const [retailer, setRetailer] = useState<RetailerSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
@@ -50,6 +50,7 @@ export default function RetailerDetailScreen({ route, navigation }: Props) {
     try {
       const visit = await authedRequest<{ id: string }>("post", "/visits", {
         clientUuid: generateUuid(),
+        distributorId,
         retailerId,
         beatId: beatId ?? undefined,
         isOffBeat: !beatId,
@@ -60,6 +61,7 @@ export default function RetailerDetailScreen({ route, navigation }: Props) {
       navigation.replace("RetailerDetail", {
         retailerId,
         retailerName: retailer?.name ?? "",
+        distributorId,
         beatId,
         visitId: visit.id,
         visitStatus: "IN_PROGRESS",
@@ -112,7 +114,12 @@ export default function RetailerDetailScreen({ route, navigation }: Props) {
           <Pressable
             style={styles.button}
             onPress={() =>
-              navigation.navigate("ProductCatalog", { retailerId, retailerName: retailer.name, visitId })
+              navigation.navigate("ProductCatalog", {
+                retailerId,
+                retailerName: retailer.name,
+                distributorId,
+                visitId,
+              })
             }
           >
             <Text style={styles.buttonText}>Take Order</Text>

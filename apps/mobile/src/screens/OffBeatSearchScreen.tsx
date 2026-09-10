@@ -5,6 +5,7 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { RetailerSummary } from "@flowmint/shared";
 import { authedRequest } from "../auth/tokenStore";
 import { ApiRequestError } from "../context/AuthContext";
+import { useDistributor } from "../context/DistributorContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "OffBeatSearch">;
 
@@ -14,28 +15,33 @@ interface SearchResponse {
 }
 
 export default function OffBeatSearchScreen({ navigation }: Props) {
+  const { distributor } = useDistributor();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<RetailerSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const runSearch = useCallback(async (text: string) => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const result = await authedRequest<SearchResponse>(
-        "get",
-        `/retailers?search=${encodeURIComponent(text)}&pageSize=30`
-      );
-      setResults(result.retailers);
-    } catch (err) {
-      setErrorMessage(err instanceof ApiRequestError ? err.message : "Could not reach the server.");
-    } finally {
-      setIsLoading(false);
-      setHasSearched(true);
-    }
-  }, []);
+  const runSearch = useCallback(
+    async (text: string) => {
+      if (!distributor) return;
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const result = await authedRequest<SearchResponse>(
+          "get",
+          `/retailers?search=${encodeURIComponent(text)}&pageSize=30&distributor_id=${distributor.id}`
+        );
+        setResults(result.retailers);
+      } catch (err) {
+        setErrorMessage(err instanceof ApiRequestError ? err.message : "Could not reach the server.");
+      } finally {
+        setIsLoading(false);
+        setHasSearched(true);
+      }
+    },
+    [distributor]
+  );
 
   // Any beat retailer this salesman visits regularly already shows up on
   // Today's Beat — this search exists specifically for the retailers who
@@ -71,9 +77,11 @@ export default function OffBeatSearchScreen({ navigation }: Props) {
           <Pressable
             style={styles.row}
             onPress={() =>
+              distributor &&
               navigation.navigate("RetailerDetail", {
                 retailerId: item.id,
                 retailerName: item.name,
+                distributorId: distributor.id,
                 beatId: null,
               })
             }

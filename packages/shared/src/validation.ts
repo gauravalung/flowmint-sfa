@@ -58,6 +58,7 @@ export const retailerOtpVerifySchema = z.object({
 });
 
 export const createRetailerSchema = z.object({
+  distributorId: z.string().uuid(),
   verificationToken: z.string().min(1),
   name: z.string().trim().min(2).max(120),
   ownerName: z.string().trim().max(120).optional(),
@@ -78,6 +79,7 @@ export const cartLineSchema = z.object({
 
 export const createOrderSchema = z.object({
   clientUuid: z.string().uuid(),
+  distributorId: z.string().uuid(),
   retailerId: z.string().uuid(),
   visitId: z.string().uuid().optional(),
   items: z.array(cartLineSchema).min(1).max(200),
@@ -85,6 +87,7 @@ export const createOrderSchema = z.object({
 
 export const startVisitSchema = z.object({
   clientUuid: z.string().uuid(),
+  distributorId: z.string().uuid(),
   retailerId: z.string().uuid(),
   beatId: z.string().uuid().optional(),
   isOffBeat: z.boolean().optional().default(false),

@@ -5,6 +5,7 @@ import {
   retailerOtpVerifySchema,
   createRetailerSchema,
 } from "@flowmint/shared";
+import { ApiError } from "../../lib/errors";
 import * as retailerService from "./retailerService";
 
 export async function getRetailerHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -18,10 +19,14 @@ export async function getRetailerHandler(req: AuthenticatedRequest, res: Respons
 
 export async function searchRetailersHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
+    const distributorId = typeof req.query.distributor_id === "string" ? req.query.distributor_id : "";
+    if (!distributorId) {
+      throw new ApiError(400, "VALIDATION_ERROR", "distributor_id is required.");
+    }
     const search = typeof req.query.search === "string" ? req.query.search : "";
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.min(50, Math.max(1, Number(req.query.pageSize) || 20));
-    const result = await retailerService.searchRetailers(req.employee.id, search, page, pageSize);
+    const result = await retailerService.searchRetailers(req.employee.id, distributorId, search, page, pageSize);
     res.json(result);
   } catch (err) {
     next(err);

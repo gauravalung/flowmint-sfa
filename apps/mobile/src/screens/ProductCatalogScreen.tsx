@@ -32,7 +32,7 @@ interface ProductPage {
 const PAGE_SIZE = 30;
 
 export default function ProductCatalogScreen({ route, navigation }: Props) {
-  const { retailerId, retailerName, visitId } = route.params;
+  const { retailerId, retailerName, distributorId, visitId } = route.params;
   const { lines, totalQty, setQuantity } = useCart();
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -177,7 +177,7 @@ export default function ProductCatalogScreen({ route, navigation }: Props) {
       {totalQty > 0 ? (
         <Pressable
           style={styles.cartBar}
-          onPress={() => navigation.navigate("Cart", { retailerId, retailerName, visitId })}
+          onPress={() => navigation.navigate("Cart", { retailerId, retailerName, distributorId, visitId })}
         >
           <Text style={styles.cartBarText}>
             View Cart — {totalQty} item{totalQty === 1 ? "" : "s"}

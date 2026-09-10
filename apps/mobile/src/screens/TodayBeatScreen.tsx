@@ -6,6 +6,7 @@ import type { RootStackParamList } from "../navigation/RootNavigator";
 import type { TodayBeatResponse, BeatRetailerEntry } from "@flowmint/shared";
 import { authedRequest } from "../auth/tokenStore";
 import { ApiRequestError, useAuth } from "../context/AuthContext";
+import { useDistributor } from "../context/DistributorContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
@@ -25,6 +26,7 @@ const STATUS_COLOR: Record<BeatRetailerEntry["visitStatus"], string> = {
 
 export default function TodayBeatScreen({ navigation }: Props) {
   const { logout } = useAuth();
+  const { distributor } = useDistributor();
   const [beat, setBeat] = useState<TodayBeatResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -59,9 +61,16 @@ export default function TodayBeatScreen({ navigation }: Props) {
   };
 
   const goToRetailer = (r: BeatRetailerEntry) => {
+    // beat.distributorId is authoritative here, not the "currently
+    // selected" distributor from context — today's beat can belong to any
+    // one of this employee's distributors (beat_employee_mapping isn't
+    // distributor-scoped), independent of which one is active in context.
+    const distributorId = beat?.distributorId ?? distributor?.id;
+    if (!distributorId) return; // shouldn't happen: a beat implies a distributorId
     navigation.navigate("RetailerDetail", {
       retailerId: r.id,
       retailerName: r.name,
+      distributorId,
       beatId: beat?.beatId ?? null,
       visitId: r.visitId,
       visitStatus: r.visitStatus,
@@ -85,6 +94,13 @@ export default function TodayBeatScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
+      <View style={styles.distributorRow}>
+        <Text style={styles.distributorName}>{distributor?.name}</Text>
+        <Pressable onPress={() => navigation.navigate("DistributorList")}>
+          <Text style={styles.switchLink}>Switch</Text>
+        </Pressable>
+      </View>
+
       {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
       <View style={styles.actionsRow}>
@@ -93,6 +109,9 @@ export default function TodayBeatScreen({ navigation }: Props) {
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("AddOutlet")}>
           <Text style={styles.secondaryButtonText}>+ New outlet</Text>
+        </Pressable>
+        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("BeatList")}>
+          <Text style={styles.secondaryButtonText}>All beats</Text>
         </Pressable>
       </View>
 
@@ -136,6 +155,15 @@ const styles = StyleSheet.create({
   },
   beatName: { fontSize: 18, fontWeight: "700", flexShrink: 1 },
   logout: { color: "#c0392b", fontSize: 14 },
+  distributorRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 2,
+  },
+  distributorName: { fontSize: 13, color: "#666", flexShrink: 1 },
+  switchLink: { color: "#1a56db", fontSize: 13, fontWeight: "600" },
   error: { color: "#c0392b", marginHorizontal: 16, marginTop: 8 },
   actionsRow: { flexDirection: "row", gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   secondaryButton: {

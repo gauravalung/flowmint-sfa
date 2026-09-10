@@ -16,7 +16,7 @@ function formatRupees(n: number): string {
 }
 
 export default function CartScreen({ route, navigation }: Props) {
-  const { retailerId, visitId } = route.params;
+  const { retailerId, distributorId, visitId } = route.params;
   const { lines, setQuantity, clear } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -43,6 +43,7 @@ export default function CartScreen({ route, navigation }: Props) {
     try {
       const order = await authedRequest<OrderResult>("post", "/orders", {
         clientUuid: generateUuid(),
+        distributorId,
         retailerId,
         visitId,
         items: lines.map((l) => ({ productId: l.product.id, quantity: l.quantity })),

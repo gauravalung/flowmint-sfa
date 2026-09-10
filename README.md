@@ -57,7 +57,8 @@ cp apps/api/.env.example apps/api/.env
 cd apps/api
 npm run migrate:up
 
-# 6. Seed realistic test data (1 salesman, 1 beat, 8 retailers, 20 products)
+# 6. Seed realistic test data (1 salesman across 2 distributors, 2 beats,
+# 12 retailers, 20 products)
 npm run seed
 # This prints the salesman's login credentials — keep that output, you'll
 # need employee_code + password to log in from the phone.

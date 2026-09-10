@@ -1,23 +1,12 @@
 import { ApiError } from "../../lib/errors";
 import * as orderRepo from "./orderRepository";
 import * as retailerRepo from "../retailers/retailerRepository";
-import * as employeeRepo from "../employees/employeeRepository";
 import * as visitRepo from "../visits/visitRepository";
 import * as productRepo from "../products/productRepository";
+import * as distributorService from "../distributors/distributorService";
 import { computeOrderTotals } from "@flowmint/shared";
 import { istDateString } from "../../lib/istDate";
 import type { CartLineInput, OrderResult } from "@flowmint/shared";
-
-async function requireEmployeeDistributor(employeeId: string): Promise<{
-  companyId: string;
-  distributorId: string;
-}> {
-  const employee = await employeeRepo.findById(employeeId);
-  if (!employee || !employee.distributor_id) {
-    throw new ApiError(500, "EMPLOYEE_NOT_ASSIGNED", "Your account is not assigned to a distributor.");
-  }
-  return { companyId: employee.company_id, distributorId: employee.distributor_id };
-}
 
 function toOrderResult(order: orderRepo.OrderRow, items: orderRepo.OrderItemRow[]): OrderResult {
   return {
@@ -51,7 +40,13 @@ function toOrderResult(order: orderRepo.OrderRow, items: orderRepo.OrderItemRow[
 
 export async function createOrder(
   employeeId: string,
-  params: { clientUuid: string; retailerId: string; visitId?: string; items: CartLineInput[] }
+  params: {
+    clientUuid: string;
+    distributorId: string;
+    retailerId: string;
+    visitId?: string;
+    items: CartLineInput[];
+  }
 ): Promise<OrderResult> {
   // Retry-safe up front: if this exact submission already landed, return it
   // as-is without re-validating retailer/visit/products against current
@@ -64,7 +59,10 @@ export async function createOrder(
     return toOrderResult(existingOrder, items);
   }
 
-  const { companyId, distributorId } = await requireEmployeeDistributor(employeeId);
+  const { companyId, distributorId } = await distributorService.requireDistributorAccess(
+    employeeId,
+    params.distributorId
+  );
 
   const retailer = await retailerRepo.findById(params.retailerId);
   if (!retailer || retailer.distributor_id !== distributorId) {

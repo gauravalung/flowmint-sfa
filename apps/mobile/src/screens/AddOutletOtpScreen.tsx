@@ -4,11 +4,13 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { authedRequest } from "../auth/tokenStore";
 import { ApiRequestError } from "../context/AuthContext";
+import { useDistributor } from "../context/DistributorContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "AddOutletOtp">;
 
 export default function AddOutletOtpScreen({ route, navigation }: Props) {
   const { draft } = route.params;
+  const { distributor } = useDistributor();
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -21,12 +23,20 @@ export default function AddOutletOtpScreen({ route, navigation }: Props) {
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
+      if (!distributor) {
+        setErrorMessage("No distributor selected.");
+        return;
+      }
       const { verificationToken } = await authedRequest<{ verificationToken: string }>(
         "post",
         "/retailers/otp/verify",
         { phone: draft.phone, otp }
       );
-      await authedRequest("post", "/retailers", { ...draft, verificationToken });
+      await authedRequest("post", "/retailers", {
+        ...draft,
+        distributorId: distributor.id,
+        verificationToken,
+      });
       navigation.popToTop();
     } catch (err) {
       setErrorMessage(err instanceof ApiRequestError ? err.message : "Could not reach the server.");

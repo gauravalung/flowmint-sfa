@@ -32,6 +32,25 @@ export type NoOrderReason =
   | "PRICE_ISSUE"
   | "OTHER";
 
+export interface DistributorSummary {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface BeatSummary {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export interface BeatRetailerListResponse {
+  beatId: string;
+  beatName: string;
+  distributorId: string;
+  retailers: (RetailerSummary & { sequenceNo: number })[];
+}
+
 export interface RetailerSummary {
   id: string;
   code: string;
@@ -52,6 +71,7 @@ export interface BeatRetailerEntry extends RetailerSummary {
 export interface TodayBeatResponse {
   beatId: string | null;
   beatName: string | null;
+  distributorId: string | null;
   date: string; // YYYY-MM-DD
   retailers: BeatRetailerEntry[];
 }

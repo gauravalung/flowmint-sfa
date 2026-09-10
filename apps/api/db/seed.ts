@@ -23,7 +23,7 @@ async function main() {
         sales_order_items, sales_orders, beat_visit_log, otp_verifications,
         products, categories, brands,
         beat_retailer_mapping, beat_employee_mapping, beats,
-        retailers, employees, distributors, companies
+        employee_distributor_mapping, retailers, employees, distributors, companies
       CASCADE
     `);
 
@@ -42,6 +42,14 @@ async function main() {
       `INSERT INTO employees (company_id, distributor_id, employee_code, name, phone, role, password_hash)
        VALUES ($1, $2, $3, $4, $5, 'SALESMAN', $6) RETURNING id`,
       [company.id, distributor.id, SALESMAN_EMPLOYEE_CODE, "Ramesh Kumar", "9876543210", passwordHash]
+    );
+
+    // employee_distributor_mapping is the actual source of access now (see
+    // the 2026-09-10 migration) — employees.distributor_id above is kept
+    // only as a legacy "home" pointer, no query scopes by it anymore.
+    await client.query(
+      `INSERT INTO employee_distributor_mapping (employee_id, distributor_id) VALUES ($1, $2)`,
+      [employee.id, distributor.id]
     );
 
     const { rows: [beat] } = await client.query(
@@ -83,6 +91,51 @@ async function main() {
       await client.query(
         `INSERT INTO beat_retailer_mapping (beat_id, retailer_id, sequence_no) VALUES ($1, $2, $3)`,
         [beat.id, retailerIds[i], i + 1]
+      );
+    }
+
+    // Second distributor — same salesman, same company, its own beat and
+    // retailer book. Exists purely so the distributor -> beats -> retailers
+    // browse hierarchy has something real to browse; not mapped into
+    // beat_employee_mapping at all (that table's UNIQUE(employee_id,
+    // day_of_week) is already fully spoken for by Beat A above, mapped to
+    // all 7 days) — "today's beat" stays exactly Beat A, distributor 2's
+    // beat is reachable only through the explicit browse screens, which is
+    // the point of the distinction (see beatRepository.findBeatsForDistributor).
+    const { rows: [distributor2] } = await client.query(
+      `INSERT INTO distributors (company_id, name, code) VALUES ($1, $2, $3) RETURNING id`,
+      [company.id, "Flowmint Demo Distributor 2", "FLOWMINT-DIST-2"]
+    );
+    await client.query(
+      `INSERT INTO employee_distributor_mapping (employee_id, distributor_id) VALUES ($1, $2)`,
+      [employee.id, distributor2.id]
+    );
+    const { rows: [beat2] } = await client.query(
+      `INSERT INTO beats (company_id, distributor_id, name, code) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [company.id, distributor2.id, "Beat B - Station Road", "BEAT-B"]
+    );
+
+    const retailerSeed2 = [
+      ["RTL-101", "Verma Traders", "Alok Verma", "10 Station Road", "Lucknow", "226001", "9822200001"],
+      ["RTL-102", "Lucky General Store", "Praveen Yadav", "Hazratganj", "Lucknow", "226002", "9822200002"],
+      ["RTL-103", "Shiv Kirana Bhandar", "Rakesh Pandey", "Aminabad", "Lucknow", "226003", "9822200003"],
+      ["RTL-104", "Modern Provision Store", "Naveen Gupta", "Chowk", "Lucknow", "226004", "9822200004"],
+    ] as const;
+
+    const retailerIds2: string[] = [];
+    for (const [code, name, ownerName, addressLine, city, pincode, phone] of retailerSeed2) {
+      const { rows: [retailer] } = await client.query(
+        `INSERT INTO retailers (company_id, distributor_id, code, name, owner_name, address_line, city, pincode, phone, source, phone_verified_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'SEED', now()) RETURNING id`,
+        [company.id, distributor2.id, code, name, ownerName, addressLine, city, pincode, phone]
+      );
+      retailerIds2.push(retailer.id);
+    }
+
+    for (let i = 0; i < retailerIds2.length; i++) {
+      await client.query(
+        `INSERT INTO beat_retailer_mapping (beat_id, retailer_id, sequence_no) VALUES ($1, $2, $3)`,
+        [beat2.id, retailerIds2[i], i + 1]
       );
     }
 
@@ -146,11 +199,14 @@ async function main() {
     await client.query("COMMIT");
 
     console.log("Seed complete.");
-    console.log(`  Company:    ${company.id} (FLOWMINT-CO)`);
-    console.log(`  Distributor: ${distributor.id} (FLOWMINT-DIST)`);
-    console.log(`  Beat:       ${beat.id} (BEAT-A), mapped to all 7 days for this salesman`);
-    console.log(`  Retailers:  ${retailerIds.length}`);
-    console.log(`  Products:   ${products.length}`);
+    console.log(`  Company:     ${company.id} (FLOWMINT-CO)`);
+    console.log(`  Distributor 1: ${distributor.id} (FLOWMINT-DIST)`);
+    console.log(`    Beat:      ${beat.id} (BEAT-A), mapped to all 7 days for this salesman`);
+    console.log(`    Retailers: ${retailerIds.length}`);
+    console.log(`  Distributor 2: ${distributor2.id} (FLOWMINT-DIST-2)`);
+    console.log(`    Beat:      ${beat2.id} (BEAT-B), not day-mapped — reachable via distributor browse only`);
+    console.log(`    Retailers: ${retailerIds2.length}`);
+    console.log(`  Products:    ${products.length} (shared across both distributors)`);
     console.log("");
     console.log(`  Salesman login -> employee_code: ${SALESMAN_EMPLOYEE_CODE}  password: ${SALESMAN_TEMP_PASSWORD}`);
     console.log(`  Salesman phone (for forgot-password OTP testing): 9876543210`);

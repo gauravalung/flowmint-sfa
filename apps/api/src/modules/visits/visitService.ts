@@ -1,16 +1,22 @@
 import { ApiError } from "../../lib/errors";
 import * as visitRepo from "./visitRepository";
 import * as retailerRepo from "../retailers/retailerRepository";
-import * as employeeRepo from "../employees/employeeRepository";
+import * as distributorService from "../distributors/distributorService";
 import { istDateString } from "../../lib/istDate";
 
 export async function startVisit(
   employeeId: string,
-  params: { clientUuid: string; retailerId: string; beatId?: string; isOffBeat?: boolean }
+  params: {
+    clientUuid: string;
+    distributorId: string;
+    retailerId: string;
+    beatId?: string;
+    isOffBeat?: boolean;
+  }
 ): Promise<visitRepo.VisitRow> {
-  const employee = await employeeRepo.findById(employeeId);
+  await distributorService.requireDistributorAccess(employeeId, params.distributorId);
   const retailer = await retailerRepo.findById(params.retailerId);
-  if (!retailer || !employee || retailer.distributor_id !== employee.distributor_id) {
+  if (!retailer || retailer.distributor_id !== params.distributorId) {
     throw new ApiError(404, "RETAILER_NOT_FOUND", "Retailer not found.");
   }
 

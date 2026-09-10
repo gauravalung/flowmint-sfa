@@ -1,7 +1,7 @@
 import { ApiError } from "../../lib/errors";
 import * as retailerRepo from "./retailerRepository";
-import * as employeeRepo from "../employees/employeeRepository";
 import * as otpService from "../otp/otpService";
+import * as distributorService from "../distributors/distributorService";
 import { verifyVerificationToken, signVerificationToken } from "../../lib/jwt";
 import type { RetailerSummary } from "@flowmint/shared";
 
@@ -18,36 +18,28 @@ function toSummary(row: retailerRepo.RetailerRow): RetailerSummary {
   };
 }
 
-async function requireEmployeeDistributor(employeeId: string): Promise<{
-  companyId: string;
-  distributorId: string;
-}> {
-  const employee = await employeeRepo.findById(employeeId);
-  // distributor_id is nullable on employees in general, but every provisioned
-  // salesman is assigned one — a salesman with none can't have a beat or
-  // book anything, so this is a real data-integrity error, not a user error.
-  if (!employee || !employee.distributor_id) {
-    throw new ApiError(500, "EMPLOYEE_NOT_ASSIGNED", "Your account is not assigned to a distributor.");
-  }
-  return { companyId: employee.company_id, distributorId: employee.distributor_id };
-}
-
+// Doesn't take a distributorId param — works from wherever the caller
+// navigated (today's beat, a beat browsed under any distributor, off-beat
+// search), then checks the *retailer's own* distributor_id against this
+// employee's mapping. Simpler for callers and no less safe: the access
+// check still happens, just after the lookup instead of before it.
 export async function getRetailerDetail(employeeId: string, retailerId: string): Promise<RetailerSummary> {
-  const { distributorId } = await requireEmployeeDistributor(employeeId);
   const retailer = await retailerRepo.findById(retailerId);
-  if (!retailer || retailer.distributor_id !== distributorId) {
+  if (!retailer) {
     throw new ApiError(404, "RETAILER_NOT_FOUND", "Retailer not found.");
   }
+  await distributorService.requireDistributorAccess(employeeId, retailer.distributor_id);
   return toSummary(retailer);
 }
 
 export async function searchRetailers(
   employeeId: string,
+  distributorId: string,
   search: string,
   page: number,
   pageSize: number
 ): Promise<{ retailers: RetailerSummary[]; total: number; page: number; pageSize: number }> {
-  const { distributorId } = await requireEmployeeDistributor(employeeId);
+  await distributorService.requireDistributorAccess(employeeId, distributorId);
   const { rows, total } = await retailerRepo.searchRetailers(distributorId, search.trim(), page, pageSize);
   return { retailers: rows.map(toSummary), total, page, pageSize };
 }
@@ -74,6 +66,7 @@ export async function verifyOutletOtp(phone: string, otp: string): Promise<strin
 export async function createFieldRetailer(
   employeeId: string,
   params: {
+    distributorId: string;
     verificationToken: string;
     name: string;
     ownerName?: string;
@@ -94,7 +87,10 @@ export async function createFieldRetailer(
   }
   await otpService.assertOtpVerified(payload.otpVerificationId);
 
-  const { companyId, distributorId } = await requireEmployeeDistributor(employeeId);
+  const { companyId, distributorId } = await distributorService.requireDistributorAccess(
+    employeeId,
+    params.distributorId
+  );
 
   const existing = await retailerRepo.findActiveByPhone(params.phone);
   if (existing) {
