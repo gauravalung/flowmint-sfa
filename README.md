@@ -1,19 +1,54 @@
-# Flowmint SFA MVP
+# Flowmint SFA — Phase 1
 
-Slice A: monorepo scaffold, database schema + migration, seed data, login,
-forgot-password (OTP), and the admin employee-provisioning CLI script.
-See `claude/SFA_MVP_Scope_Locked.md` and `claude/DECISIONS.md` (mirrored
-into this repo — also kept in the Claude project) for the full spec and
-decision history.
+VLCC Personal Care's Flowmint SFA mobile app + Admin Web Portal, Phase 1
+("basic scope"): full distributor hierarchy, mapping model, code
+generation, status tracking, bulk upload, and a two-stage scheme discount
+— see `claude/Flowmint_Phase1_Scope_Locked.md` for the full spec and
+`claude/DECISIONS.md` for the decision history, including how this
+supersedes the earlier single-salesman MVP (`claude/SFA_MVP_Scope_Locked.md`,
+kept for reference).
 
-## What's in Slice A
+## What's in this slice (Foundation)
 
-- **Backend** (`apps/api`): Express + TypeScript. Login, token refresh,
-  forgot-password (request/verify/reset via OTP), all backed by Postgres.
-- **Mobile** (`apps/mobile`): React Native / Expo. Login screen and the
-  three-step forgot-password flow, wired to the real backend (no mocks).
-- **Shared** (`packages/shared`): TypeScript types + zod validation schemas
-  used by both.
+Backend-first, matching how every previous slice in this repo has been
+built: the API for a capability lands before its screen.
+
+- **Schema**: full Phase 1 schema — Super/Direct/Sub Distributor hierarchy,
+  all six mapping tables (granular add/remove, 40-outlet beat cap),
+  sequential code generation, status-change audit log, retailer
+  classification, PJP/GPS/face-recognition tables (schema only — see
+  "Not in this slice" below), two-stage (tentative + final) scheme
+  discount, bulk-upload job tracking.
+- **Backend** (`apps/api`): org hierarchy CRUD, retailer CRUD + admin
+  bulk upload (retailer/product/beat-retailer-mapping/employee masters,
+  each with a downloadable template and row-level error reporting), beat
+  CRUD, all six mapping endpoints, status toggle + history, distributor
+  catalog/inventory, order booking with tentative-at-booking +
+  final-at-delivery scheme calculation, admin employee provisioning (HTTP
+  + CLI script), system settings (OTP-mandatory toggle). Plus the
+  MVP-era mobile endpoints (login, forgot-password, today's beat, visits,
+  off-beat search, outlet creation), refactored onto the new schema.
+- **Mobile** (`apps/mobile`): the screens already built in earlier work
+  (login, forgot-password, today's beat, retailer detail, close visit,
+  off-beat search, add outlet) updated to match the new API contract —
+  outlet creation now collects a category and is scoped to the beat it
+  was opened from, per spec §8.5.
+- **Admin Web Portal** (`apps/admin`) — added 2026-09-09, one screen per
+  admin capability above: distribution partners, retailers, retailer
+  subcategories, beats, all six mappings (tabbed, granular add/remove),
+  employees, products + per-distributor inventory, bulk upload, system
+  settings, status history. See "Admin Web Portal" below to run it.
+- **Shared** (`packages/shared`): types + zod validation schemas used by
+  all three apps.
+
+## Not in this slice (schema exists, API/UI does not yet)
+
+PJP submit/approve API · GPS day-start verification API · face
+recognition (data model + provider-adapter interface only, no vendor
+wired) · dashboard API (or a screen for it) · mobile screens for
+distributor→beat→retailer navigation, catalog/cart, and PJP/GPS. See
+`claude/Flowmint_Phase1_Scope_Locked.md` §13 for the full breakdown and
+what's planned for the next slice.
 
 ## One important change from the original plan
 
@@ -57,10 +92,12 @@ cp apps/api/.env.example apps/api/.env
 cd apps/api
 npm run migrate:up
 
-# 6. Seed realistic test data (1 salesman, 1 beat, 8 retailers, 20 products)
+# 6. Seed realistic test data: 1 company; 1 Super + 1 Direct + 1 Sub
+# Distributor; an ADMIN, RSM, ASM, and Sales Officer with a real reporting
+# chain; 1 beat, 8 retailers, 5 brands, 5 categories, 20 products.
 npm run seed
-# This prints the salesman's login credentials — keep that output, you'll
-# need employee_code + password to log in from the phone.
+# This prints login credentials for all four seeded roles — keep that
+# output, you'll need employee_code + password to log in.
 
 # 7. Start the API
 npm run dev
@@ -97,44 +134,123 @@ networks, campus/office Wi-Fi with client isolation — run
 `npx expo start --tunnel` instead, which routes through Expo's relay; it's
 slower but works across networks.
 
-Log in with the `employee_code` / password the seed script printed. To test
-forgot-password, request an OTP from the app — since no SMS provider is
-configured yet, the OTP is printed to the terminal where `npm run dev` (the
-API) is running, not actually sent as a text message. Look for a line like:
+Log in with the Sales Officer credentials the seed script printed (`SO001`)
+to see the field flow. For admin capabilities, use the Admin Web Portal
+(below) rather than curl — it's a real UI now. To test forgot-password,
+request an OTP from the app — since
+no SMS provider is configured yet, the OTP is printed to the terminal
+where `npm run dev` (the API) is running, not actually sent as a text
+message. Look for a line like:
 
 ```
 [otp:console] would send OTP 123456 to 9876543210
 ```
 
-## Admin: creating another salesman login
-
-There's no admin web portal in this MVP and deliberately no HTTP endpoint
-for this either (see `claude/DECISIONS.md`, round 4) — it's a local script:
+## Admin Web Portal
 
 ```bash
-cd apps/api
-npm run create-employee -- --code=SM002 --name="Suresh Patel" --phone=9876500002
+cd apps/admin
+npm install   # if you haven't already, from the repo root `npm install` covers this
+npm run dev
 ```
 
-This prints a temporary password once. It is not recoverable — hand it to
-the employee directly, or have them use forgot-password on first login.
+Open http://localhost:5173 and log in with `ADM001` / the seed password —
+the portal rejects any non-`ADMIN` role at login. It talks to the API at
+`http://localhost:4000/api/v1` by default; set `VITE_API_BASE_URL` (an
+`apps/admin/.env` file, or the environment) to point it elsewhere.
 
-## What's verified vs. what needs your phone
+Every screen in the sidebar maps to an admin capability in the spec:
+Distribution Partners (Super/Direct/Sub, with Sub Distributor codes
+auto-generated), Retailers, Retailer Subcategories, Beats, Mappings (all
+six relationship types, each removable one link at a time), Employees,
+Products & Inventory (the shared catalog plus each distributor's
+stock/focus overlay), Bulk Upload (per-type template + upload + row-level
+error report), Status History, and Settings.
 
-I've verified from this sandbox: the full login/lockout/refresh/forgot-
-password flow end-to-end against the real database (including account
-lockout after 5 failed attempts, OTP expiry/attempt-cap/resend-cooldown,
-refresh-token invalidation on password reset, and enumeration-safe generic
-error responses), the admin CLI script, and that the mobile app type-checks
-and bundles cleanly for Android (716 modules, no errors).
+Note worth knowing if you ever touch `apps/admin`'s dependencies:
+`react`/`react-dom` are pinned to the exact version `apps/mobile` uses
+(18.2.0), not a newer one — see `claude/DECISIONS.md` 2026-09-09 for why
+(two React copies loaded at once otherwise, in an npm workspace with no
+`nohoist`).
 
-What I have not verified, because this sandbox has no physical Android
-device attached: the actual on-device experience — layout, keyboard
-behavior, real network conditions. That needs your phone, per the steps
-above.
+## Admin: creating another employee login
 
-## Next: Slice B
+Unlike the earlier single-salesman MVP, Phase 1 exposes this over HTTP as
+well as the CLI script — see `claude/DECISIONS.md` 2026-09-09 for why the
+CLI-only tradeoff no longer applies now that there's a real multi-employee
+rollout and a bulk-upload feature to match:
 
-Today's beat, retailer detail, visit check-in/close, off-beat search, and
-new outlet creation (OTP-verified). Waiting on your review of this slice
-before starting.
+```bash
+# HTTP (requires an ADMIN access token — see the auth endpoints above)
+curl -X POST http://localhost:4000/api/v1/admin/employees \
+  -H "Authorization: Bearer <admin access token>" -H "Content-Type: application/json" \
+  -d '{"employeeCode":"ASM002","name":"Suresh Patel","phone":"9876500002","role":"ASM","reportingManagerId":"<rsm employee id>"}'
+
+# or the CLI script, unchanged in spirit from the MVP:
+cd apps/api
+npm run create-employee -- --code=ASM002 --name="Suresh Patel" --phone=9876500002 --role=ASM --manager=RSM001
+```
+
+Both print/return a temporary password once. It is not recoverable — hand
+it to the employee directly, or have them use forgot-password on first
+login. Valid `role` values: `SALES_OFFICER`, `ISR`, `ASE`, `ASM`, `RSM`,
+`COUNTRY_HEAD`, `ADMIN`.
+
+## Admin: bulk upload
+
+Easiest via the Admin Web Portal's Bulk Upload screen. Over curl:
+
+```bash
+# Download a template
+curl -H "Authorization: Bearer <admin access token>" \
+  http://localhost:4000/api/v1/admin/bulk-upload/RETAILER/template -o retailers_template.csv
+
+# Upload a filled-in CSV — retailer/product codes and any missing
+# subcategory/brand/category referenced by name are created automatically.
+curl -H "Authorization: Bearer <admin access token>" \
+  -F "file=@retailers.csv" \
+  http://localhost:4000/api/v1/admin/bulk-upload/RETAILER
+```
+
+Upload types: `RETAILER`, `PRODUCT`, `BEAT_RETAILER_MAPPING`, `EMPLOYEE`.
+The response reports `totalRows`/`successRows`/`failedRows` plus a
+per-row `errors` array naming exactly why each failed row was rejected —
+no partial/silent imports.
+
+## What's verified
+
+Migration applies cleanly against a real Postgres database (28 tables);
+seed script runs end-to-end and prints working logins for all four seeded
+roles; `apps/api`, `apps/mobile`, and `apps/admin` all type-check/build
+with no errors; `apps/mobile` bundles cleanly for Android (723 modules,
+no errors). Smoke-tested against the running API: login for every seeded
+role; today's-beat and distributor→beat→retailer navigation; admin
+creation of a Super/Sub Distributor (auto-generated `SUBnnnn` code) with
+duplicate-code rejection; the beat 40-outlet cap (41st mapping correctly
+rejected, `BEAT_CAPACITY_EXCEEDED`); order booking with the tentative
+scheme discount (10% slab at an ex-GST subtotal over ₹10,000); order
+delivery recalculating the *final* scheme discount from a reduced
+delivered quantity (correctly dropping to the 0% slab); OTP-gated field
+outlet creation end-to-end (request → verify → create, phone marked
+verified); bulk retailer upload (partial success with a row-level error
+reported for a missing required field, auto-generated `RETnnnnn` codes
+for blank-code rows). The Admin Web Portal itself was Playwright-driven
+end-to-end against the real running API (not mocks): logged in as
+`ADM001`; created a Super Distributor, then a Sub Distributor under it
+(confirmed auto `SUBnnnn` code); created a retailer and a beat; mapped
+the retailer to the beat and removed that one mapping (confirming
+granular removal); uploaded a 2-row retailer CSV with one bad row and
+confirmed the 1-success/1-failure report; edited a system setting;
+created an employee (got a one-time temp password back); created a
+product and set its available qty/focus flag in a distributor's
+inventory. What has not been verified: the actual on-device mobile
+experience (no physical Android device in this sandbox) and
+PJP/GPS/dashboard/face-recognition, which are not built yet — see "Not in
+this slice" above.
+
+## Next
+
+Pick up from `claude/Flowmint_Phase1_Scope_Locked.md` §13: PJP
+submit/approve + GPS day-start APIs and screens, dashboard APIs (and a
+screen for them), and face-recognition vendor integration — each its own
+gated slice, same working style as every slice before this one.

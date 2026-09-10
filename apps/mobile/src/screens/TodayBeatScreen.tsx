@@ -91,9 +91,14 @@ export default function TodayBeatScreen({ navigation }: Props) {
         <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("OffBeatSearch")}>
           <Text style={styles.secondaryButtonText}>Off-beat retailer</Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate("AddOutlet")}>
-          <Text style={styles.secondaryButtonText}>+ New outlet</Text>
-        </Pressable>
+        {beat?.beatId ? (
+          <Pressable
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate("AddOutlet", { beatId: beat.beatId as string })}
+          >
+            <Text style={styles.secondaryButtonText}>+ New outlet</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <FlatList

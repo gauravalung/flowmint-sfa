@@ -3,7 +3,7 @@ import type { AuthenticatedRequest } from "../../middleware/requireAuth";
 import {
   retailerOtpRequestSchema,
   retailerOtpVerifySchema,
-  createRetailerSchema,
+  createFieldRetailerSchema,
 } from "@flowmint/shared";
 import * as retailerService from "./retailerService";
 
@@ -52,8 +52,8 @@ export async function verifyOutletOtpHandler(req: AuthenticatedRequest, res: Res
 
 export async function createRetailerHandler(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    const body = createRetailerSchema.parse(req.body);
-    const result = await retailerService.createFieldRetailer(req.employee.id, body);
+    const body = createFieldRetailerSchema.parse(req.body);
+    const result = await retailerService.createFieldRetailer(req.employee.id, req.employee.companyId, body);
     res.status(201).json(result);
   } catch (err) {
     next(err);

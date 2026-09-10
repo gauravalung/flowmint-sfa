@@ -7,6 +7,7 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     employeeCode: string;
     role: string;
+    companyId: string;
   };
 }
 
@@ -26,6 +27,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction) {
       id: payload.sub,
       employeeCode: payload.employeeCode,
       role: payload.role,
+      companyId: payload.companyId,
     };
     next();
   } catch {

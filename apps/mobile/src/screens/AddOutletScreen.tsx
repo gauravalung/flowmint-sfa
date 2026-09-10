@@ -7,9 +7,11 @@ import { ApiRequestError } from "../context/AuthContext";
 
 type Props = NativeStackScreenProps<RootStackParamList, "AddOutlet">;
 
-export default function AddOutletScreen({ navigation }: Props) {
+export default function AddOutletScreen({ navigation, route }: Props) {
+  const { beatId } = route.params;
   const [name, setName] = useState("");
   const [ownerName, setOwnerName] = useState("");
+  const [category, setCategory] = useState<"RETAIL" | "WHOLESALE">("RETAIL");
   const [addressLine, setAddressLine] = useState("");
   const [city, setCity] = useState("");
   const [pincode, setPincode] = useState("");
@@ -32,8 +34,10 @@ export default function AddOutletScreen({ navigation }: Props) {
       await authedRequest("post", "/retailers/otp/request", { phone: phone.trim() });
       navigation.navigate("AddOutletOtp", {
         draft: {
+          beatId,
           name: name.trim(),
           ownerName: ownerName.trim() || undefined,
+          category,
           addressLine: addressLine.trim() || undefined,
           city: city.trim() || undefined,
           pincode: pincode.trim() || undefined,
@@ -58,6 +62,21 @@ export default function AddOutletScreen({ navigation }: Props) {
 
       <Text style={styles.label}>Owner Name</Text>
       <TextInput style={styles.input} value={ownerName} onChangeText={setOwnerName} placeholder="Optional" />
+
+      <Text style={styles.label}>Category *</Text>
+      <View style={styles.row}>
+        {(["RETAIL", "WHOLESALE"] as const).map((option) => (
+          <Pressable
+            key={option}
+            style={[styles.categoryOption, category === option && styles.categoryOptionSelected]}
+            onPress={() => setCategory(option)}
+          >
+            <Text style={category === option ? styles.categoryOptionTextSelected : styles.categoryOptionText}>
+              {option === "RETAIL" ? "Retail" : "Wholesale"}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
       <Text style={styles.label}>Address</Text>
       <TextInput style={styles.input} value={addressLine} onChangeText={setAddressLine} placeholder="Optional" />
@@ -114,6 +133,17 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: "row", gap: 12 },
   half: { flex: 1 },
+  categoryOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  categoryOptionSelected: { borderColor: "#1a7f37", backgroundColor: "#eaf7ee" },
+  categoryOptionText: { color: "#333", fontSize: 14 },
+  categoryOptionTextSelected: { color: "#1a7f37", fontSize: 14, fontWeight: "600" },
   error: { color: "#c0392b", marginTop: 16 },
   button: { backgroundColor: "#1a7f37", borderRadius: 8, paddingVertical: 14, alignItems: "center", marginTop: 28 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },

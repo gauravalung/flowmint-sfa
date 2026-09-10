@@ -1,16 +1,22 @@
 import { ApiError } from "../../lib/errors";
 import * as visitRepo from "./visitRepository";
 import * as retailerRepo from "../retailers/retailerRepository";
-import * as employeeRepo from "../employees/employeeRepository";
 import { istDateString } from "../../lib/istDate";
 
 export async function startVisit(
   employeeId: string,
   params: { clientUuid: string; retailerId: string; beatId?: string; isOffBeat?: boolean }
 ): Promise<visitRepo.VisitRow> {
-  const employee = await employeeRepo.findById(employeeId);
   const retailer = await retailerRepo.findById(params.retailerId);
-  if (!retailer || !employee || retailer.distributor_id !== employee.distributor_id) {
+  if (!retailer || !retailer.is_active) {
+    throw new ApiError(404, "RETAILER_NOT_FOUND", "Retailer not found.");
+  }
+  // Reachable via any relationship — direct mapping, a mapped beat, or a
+  // mapped distributor the retailer also belongs to (spec §6). Replaces the
+  // MVP's single distributor_id equality check, which no longer applies now
+  // that a salesman can work multiple distributors.
+  const accessible = await retailerRepo.isRetailerAccessibleToEmployee(employeeId, params.retailerId);
+  if (!accessible) {
     throw new ApiError(404, "RETAILER_NOT_FOUND", "Retailer not found.");
   }
 

@@ -8,6 +8,7 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:mobile": "npm run start --workspace=apps/mobile",
+    "dev:admin": "npm run dev --workspace=apps/admin",
     "build:shared": "npm run build --workspace=packages/shared"
   },
   "engines": {

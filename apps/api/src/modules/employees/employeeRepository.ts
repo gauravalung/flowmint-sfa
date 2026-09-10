@@ -1,13 +1,15 @@
 import { pool } from "../../db/pool";
+import type { EmployeeRole } from "@flowmint/shared";
 
 export interface EmployeeRow {
   id: string;
   company_id: string;
-  distributor_id: string | null;
   employee_code: string;
   name: string;
   phone: string;
-  role: "SALESMAN";
+  role: EmployeeRole;
+  reporting_manager_id: string | null;
+  face_reference_photo_url: string | null;
   password_hash: string;
   failed_login_attempts: number;
   locked_until: Date | null;
@@ -69,17 +71,60 @@ export async function updatePasswordAndBumpTokenVersion(id: string, passwordHash
 
 export async function createEmployee(params: {
   companyId: string;
-  distributorId: string | null;
   employeeCode: string;
   name: string;
   phone: string;
+  role: EmployeeRole;
+  reportingManagerId: string | null;
   passwordHash: string;
 }): Promise<EmployeeRow> {
   const { rows } = await pool.query<EmployeeRow>(
-    `INSERT INTO employees (company_id, distributor_id, employee_code, name, phone, role, password_hash)
-     VALUES ($1, $2, $3, $4, $5, 'SALESMAN', $6)
+    `INSERT INTO employees (company_id, employee_code, name, phone, role, reporting_manager_id, password_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING *`,
-    [params.companyId, params.distributorId, params.employeeCode, params.name, params.phone, params.passwordHash]
+    [
+      params.companyId,
+      params.employeeCode,
+      params.name,
+      params.phone,
+      params.role,
+      params.reportingManagerId,
+      params.passwordHash,
+    ]
   );
   return rows[0];
+}
+
+export async function list(filter: { isActive?: boolean; role?: EmployeeRole }): Promise<EmployeeRow[]> {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+  if (filter.isActive !== undefined) {
+    params.push(filter.isActive);
+    conditions.push(`is_active = $${params.length}`);
+  }
+  if (filter.role) {
+    params.push(filter.role);
+    conditions.push(`role = $${params.length}`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const { rows } = await pool.query<EmployeeRow>(`SELECT * FROM employees ${where} ORDER BY name ASC`, params);
+  return rows;
+}
+
+// The employee's downline via a recursive walk of reporting_manager_id
+// (spec §2.2/§10) — every employee, at any depth, who ultimately reports up
+// to this one. Used by dashboard queries in a later slice; exposed here now
+// since it's a property of the employee table's own shape.
+export async function findDownlineEmployeeIds(managerId: string): Promise<string[]> {
+  const { rows } = await pool.query<{ id: string }>(
+    `WITH RECURSIVE downline AS (
+       SELECT id FROM employees WHERE reporting_manager_id = $1
+       UNION ALL
+       SELECT e.id FROM employees e
+       JOIN downline d ON e.reporting_manager_id = d.id
+     )
+     SELECT id FROM downline`,
+    [managerId]
+  );
+  return rows.map((r) => r.id);
 }

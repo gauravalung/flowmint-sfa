@@ -150,3 +150,82 @@ Quantity in pieces · login by employee code · English-only UI · monorepo/npm 
 **Delivered:** full repo (excluding `node_modules`/build artifacts) as a zip via SendUserFile, plus `docker-compose.yml` for local Postgres setup on the user's machine, plus a root `README.md` covering setup, running on a real phone, and OTP testing without a configured SMS provider.
 
 **Next:** Slice B (today's beat, retailer detail, check-in/close, off-beat search, new outlet creation) — not started, awaiting review of Slice A.
+
+---
+
+## 2026-09-09 — Full Phase 1 requirements received; supersedes the MVP
+
+**Context:** A formal Phase 1 requirements document (VLCC Personal Care —
+Flowmint SFA Mobile App + Admin Web Portal), captured from an oral
+discovery session with Cuni, was handed off with an explicit "take action"
+go-ahead. It describes a much larger system than the MVP already in this
+repo: full Super/Direct/Sub-Distributor billing hierarchy, a reporting
+hierarchy (SO/ISR/ASE → ASM → RSM → Country Head), many-to-many mapping
+tables with granular removal, sequential code generation, status-change
+audit history, retailer categorization, a 40-outlet beat cap, face
+recognition at login, GPS-verified PJP/day-start, per-user downline
+dashboards, an admin web portal, and bulk CSV/Excel upload with row-level
+validation reporting. It also specifies scheme discount slabs (₹5k/₹10k →
+0/5/10%, two-stage tentative-then-final) that directly conflict with the
+MVP's already-built rule (₹2.5k/₹5k → 0/2/5%, single-stage), and its own
+text (§9/§12) flags this as needing explicit reconciliation rather than a
+silent overwrite.
+
+**Conflicts flagged before building, resolved via `AskUserQuestion`:**
+
+| Question | Answer |
+|---|---|
+| Does the new Phase 1 doc supersede the MVP's scope/schema, or should the MVP's single-tenant schema be extended incrementally? | **New doc supersedes.** Redesign the schema/backend for the full org hierarchy; reuse MVP code where it still fits (auth, OTP adapter, layering), don't be constrained by its single-tenant assumptions. |
+| Does the new VLCC scheme (₹5k/₹10k, 0/5/10%, tentative+final) supersede the MVP's built rule (₹2.5k/₹5k, 0/2/5%, single-stage)? | **Yes, supersedes.** MVP rule retired. |
+
+**Decision:** Proceed under `claude/Flowmint_Phase1_Scope_Locked.md`
+(new document, supersedes `SFA_MVP_Scope_Locked.md` for scope/schema/
+scheme). Built vertical-slice, gated by review — same working style as the
+MVP. First slice is the foundation: full schema migration, admin-side
+backend (org hierarchy, mapping, codes, status, bulk upload), scheme v2,
+and the existing MVP mobile-facing endpoints refactored onto the new
+schema so the app keeps running end-to-end. Admin web portal frontend,
+mobile screens for the new flows (PJP, GPS day-start, catalog/cart,
+dashboard), face-recognition vendor integration, and dashboard API
+endpoints are explicitly deferred to later slices — see
+`Flowmint_Phase1_Scope_Locked.md` §13.
+
+**What did NOT change:** persistence layer (`pg` + `node-pg-migrate`),
+layering (route→controller→service→repository), JWT/lockout/OTP-adapter
+security patterns, JSON error envelope.
+
+---
+
+## 2026-09-09 — Admin Web Portal frontend: React pinned to 18.2.0, matching the mobile app
+
+**Context:** Scaffolded `apps/admin` (Vite + React + TypeScript +
+react-router-dom) as the Phase 1 admin frontend. `npm create vite@latest`
+defaults to React 19, but `apps/mobile` requires React 18.2.0 (React
+Native 0.74.5's peer requirement). In one npm workspace tree without
+Yarn-style `nohoist`, that meant two real copies of React loaded at once —
+the hoisted 18.2.0 at the repo root (used by mobile) and a nested 19.2.8
+inside `apps/admin/node_modules` (needed because 19 conflicts with the
+hoisted 18). `react-router-dom`'s own `react-router` dependency got
+hoisted to the root and resolved *its* `react` import from the root's
+18.2.0 copy, while the app tree itself rendered via the nested 19.2.8
+`react`/`react-dom` pair — two different React module instances mounted
+in the same page, which is exactly what "Invalid hook call... you might
+have more than one copy of React" means. Confirmed directly: the admin
+app broke on every page past login with that exact React error until
+this was fixed.
+
+**Decision:** Pinned `apps/admin`'s `react`/`react-dom` to the exact same
+`18.2.0` as `apps/mobile` (not just "^18"), plus compatible
+`@vitejs/plugin-react`/`vite`/`@types/react*` versions. With both apps
+requiring the identical version, npm hoists one single shared copy to the
+root for everything (including `react-router`'s transitive `react`
+resolution) — no duplicate-copy possibility left. Verified:
+`apps/admin/node_modules` no longer contains its own `react`/`react-dom`
+at all; a Playwright smoke test exercising every admin screen renders and
+behaves correctly.
+
+**Why not the reverse (keep React 19, work around mobile)?** React Native
+0.74.5 hard-pins its React peer version; the admin app has no such
+constraint and any recent React 18 works fine for a CRUD portal. Matching
+down was the only direction that didn't require touching the mobile app's
+own dependency tree.

@@ -1,4 +1,5 @@
-# Render Blueprint — deploys apps/api as a free web service.
+# Render Blueprint — deploys apps/api as a free web service and
+# apps/admin (the admin portal) as a static site.
 # Database is external (Neon), not Render's own Postgres — Render's free
 # Postgres expires 30 days after creation; Neon's free tier doesn't.
 # See README.md "Deploying for real use" for the full walkthrough.
@@ -27,3 +28,18 @@ services:
         generateValue: true
       - key: OTP_PROVIDER
         value: console
+
+  - type: web
+    name: flowmint-admin
+    runtime: static
+    buildCommand: npm install && npm run build:shared && npm --workspace=apps/admin run build
+    staticPublishPath: apps/admin/dist
+    envVars:
+      # Point this at flowmint-api's real URL once it's deployed — Render
+      # only knows the URL after the service above is created once.
+      - key: VITE_API_BASE_URL
+        value: https://flowmint-api.onrender.com/api/v1
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
